@@ -22,6 +22,7 @@
         "culori": "^4.0.2",
         "dockerode": "^4.0.9",
         "dotenv-cli": "^10.0.0",
+        "husky": "^9.1.7",
         "knip": "^5.82.1",
         "turbo": "^2.7.6",
         "typescript": "^5.9.3",
