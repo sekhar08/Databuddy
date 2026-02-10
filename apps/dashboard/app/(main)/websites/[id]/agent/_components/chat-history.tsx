@@ -15,10 +15,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useAgentChatId } from "./agent-chat-context";
-import {
-	clearLastChatId,
-	useChatList,
-} from "./hooks/use-chat-db";
+import { clearLastChatId, useChatList } from "./hooks/use-chat-db";
 
 dayjs.extend(relativeTime);
 
@@ -54,11 +51,7 @@ export function ChatHistory() {
 	return (
 		<Popover onOpenChange={setOpen} open={open}>
 			<PopoverTrigger asChild>
-				<Button
-					aria-label="Chat history"
-					size="sm"
-					variant="ghost"
-				>
+				<Button aria-label="Chat history" size="sm" variant="ghost">
 					<ClockCounterClockwiseIcon className="size-4" weight="duotone" />
 				</Button>
 			</PopoverTrigger>

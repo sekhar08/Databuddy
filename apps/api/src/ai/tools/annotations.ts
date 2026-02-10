@@ -296,7 +296,10 @@ export function createAnnotationTools() {
 					"CRITICAL: Must be false initially. Only set to true after user explicitly confirms. When false, returns a preview and asks for confirmation."
 				),
 		}),
-		execute: async ({ id, text, tags, color, isPublic, confirmed }, options) => {
+		execute: async (
+			{ id, text, tags, color, isPublic, confirmed },
+			options
+		) => {
 			const context = getAppContext(options);
 			try {
 				if (!confirmed) {

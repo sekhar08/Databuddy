@@ -1,3 +1,4 @@
+import type { UIMessage } from "ai";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 export interface ChatRecord {
@@ -14,6 +15,7 @@ interface ChatListState {
 
 const STORAGE_PREFIX = "databunny-chats";
 const LAST_CHAT_PREFIX = "databunny-last-chat";
+const MESSAGES_PREFIX = "databunny-messages";
 
 function storageKey(websiteId: string): string {
 	return `${STORAGE_PREFIX}:${websiteId}`;
@@ -23,9 +25,15 @@ function lastChatKey(websiteId: string): string {
 	return `${LAST_CHAT_PREFIX}:${websiteId}`;
 }
 
+function messagesKey(websiteId: string, chatId: string): string {
+	return `${MESSAGES_PREFIX}:${websiteId}:${chatId}`;
+}
+
 function safeGetItem(key: string): string | null {
 	try {
-		return typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
+		return typeof localStorage !== "undefined"
+			? localStorage.getItem(key)
+			: null;
 	} catch {
 		return null;
 	}
@@ -90,6 +98,7 @@ function upsertChat(chat: ChatRecord): void {
 function deleteChat(websiteId: string, chatId: string): void {
 	const records = listChats(websiteId).filter((r) => r.id !== chatId);
 	safeSetItem(storageKey(websiteId), JSON.stringify(records));
+	safeRemoveItem(messagesKey(websiteId, chatId));
 }
 
 export function getLastChatId(websiteId: string): string | null {
@@ -105,6 +114,40 @@ export function setLastChatId(websiteId: string, chatId: string): void {
 
 export function clearLastChatId(websiteId: string): void {
 	safeRemoveItem(lastChatKey(websiteId));
+}
+
+export function getMessagesFromLocal(
+	websiteId: string,
+	chatId: string
+): UIMessage[] {
+	const raw = safeGetItem(messagesKey(websiteId, chatId));
+	if (!raw) return [];
+	try {
+		const parsed = JSON.parse(raw) as UIMessage[];
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+}
+
+export function saveMessagesToLocal(
+	websiteId: string,
+	chatId: string,
+	messages: UIMessage[]
+): void {
+	if (!(chatId && Array.isArray(messages))) return;
+	try {
+		safeSetItem(messagesKey(websiteId, chatId), JSON.stringify(messages));
+	} catch {
+		// Ignore quota or security errors
+	}
+}
+
+export function clearMessagesFromLocal(
+	websiteId: string,
+	chatId: string
+): void {
+	safeRemoveItem(messagesKey(websiteId, chatId));
 }
 
 const EMPTY_CHAT_LIST_STATE: ChatListState = { chats: [], isLoading: false };

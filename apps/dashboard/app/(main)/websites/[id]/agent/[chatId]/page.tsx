@@ -22,7 +22,11 @@ export default async function AgentPage(props: Props) {
 	}
 
 	return (
-		<ChatProvider chatId={chatId} initialMessages={initialMessages}>
+		<ChatProvider
+			chatId={chatId}
+			initialMessages={initialMessages}
+			websiteId={id}
+		>
 			<Suspense fallback={<AgentPageSkeleton />}>
 				<AgentPageClient chatId={chatId} websiteId={id} />
 			</Suspense>

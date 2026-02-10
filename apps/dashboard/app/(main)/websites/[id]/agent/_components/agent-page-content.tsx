@@ -1,12 +1,12 @@
 "use client";
 
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr/ArrowRight";
-import { useEffect } from "react";
 import { BrainIcon } from "@phosphor-icons/react/dist/ssr/Brain";
 import { ChartBarIcon } from "@phosphor-icons/react/dist/ssr/ChartBar";
 import { LightningIcon } from "@phosphor-icons/react/dist/ssr/Lightning";
 import { TableIcon } from "@phosphor-icons/react/dist/ssr/Table";
 import { useSetAtom } from "jotai";
+import { useEffect } from "react";
 import {
 	Conversation,
 	ConversationContent,
@@ -105,10 +105,10 @@ function AgentPageContentInner({
 								Analytics co-pilot with instant answers and guided insights.
 							</p>
 						</div>
-					<div className="flex shrink-0 items-center gap-1.5">
-						<ChatHistory />
-						<NewChatButton />
-					</div>
+						<div className="flex shrink-0 items-center gap-1.5">
+							<ChatHistory />
+							<NewChatButton />
+						</div>
 					</div>
 				</div>
 

@@ -65,7 +65,10 @@ export const ChainOfThought = memo(
 
 		return (
 			<ChainOfThoughtContext.Provider value={chainOfThoughtContext}>
-				<div className={cn("not-prose max-w-prose space-y-1", className)} {...props}>
+				<div
+					className={cn("not-prose max-w-prose space-y-1", className)}
+					{...props}
+				>
 					{children}
 				</div>
 			</ChainOfThoughtContext.Provider>
@@ -91,7 +94,10 @@ export const ChainOfThoughtHeader = memo(
 					{...props}
 				>
 					<span className="flex items-center gap-2">
-						<GearIcon className="size-3.5 shrink-0 opacity-70" weight="duotone" />
+						<GearIcon
+							className="size-3.5 shrink-0 opacity-70"
+							weight="duotone"
+						/>
 						<span>{children ?? "Processing"}</span>
 					</span>
 					<CaretDownIcon
@@ -149,7 +155,9 @@ export const ChainOfThoughtStep = memo(
 						<p className="text-muted-foreground text-xs">{description}</p>
 					)}
 					{children && (
-						<div className="pt-0.5 text-muted-foreground text-xs">{children}</div>
+						<div className="pt-0.5 text-muted-foreground text-xs">
+							{children}
+						</div>
 					)}
 				</div>
 			</div>

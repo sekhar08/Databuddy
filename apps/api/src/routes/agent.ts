@@ -16,10 +16,13 @@ import { captureError, record, setAttributes } from "../lib/tracing";
 import { validateWebsite } from "../lib/website-utils";
 
 function jsonError(status: number, code: string, message: string): Response {
-	return new Response(JSON.stringify({ success: false, error: message, code }), {
-		status,
-		headers: { "Content-Type": "application/json" },
-	});
+	return new Response(
+		JSON.stringify({ success: false, error: message, code }),
+		{
+			status,
+			headers: { "Content-Type": "application/json" },
+		}
+	);
 }
 
 function getErrorMessage(error: unknown, fallback = "Unknown error"): string {
@@ -62,9 +65,12 @@ const MAX_PROPERTIES_PER_PART = 20;
 const UIMessageSchema = t.Object({
 	id: t.String(),
 	role: t.Union([t.Literal("user"), t.Literal("assistant")]),
-	parts: t.Array(t.Record(t.String(), t.Any(), { maxProperties: MAX_PROPERTIES_PER_PART }), {
-		maxItems: MAX_PARTS_PER_MESSAGE,
-	}),
+	parts: t.Array(
+		t.Record(t.String(), t.Any(), { maxProperties: MAX_PROPERTIES_PER_PART }),
+		{
+			maxItems: MAX_PARTS_PER_MESSAGE,
+		}
+	),
 });
 
 const AgentRequestSchema = t.Object({
@@ -80,7 +86,9 @@ const AgentRequestSchema = t.Object({
 /**
  * Create a ToolLoopAgent from AgentConfig.
  */
-function createToolLoopAgent(config: AgentConfig): InstanceType<typeof ToolLoopAgent> {
+function createToolLoopAgent(
+	config: AgentConfig
+): InstanceType<typeof ToolLoopAgent> {
 	return new ToolLoopAgent({
 		model: config.model,
 		instructions: config.system,
@@ -120,7 +128,7 @@ export const agent = new Elysia({ prefix: "/v1/agent" })
 
 				setAttributes({
 					agent_website_id: body.websiteId,
-						agent_user_id: user?.id ?? "unknown",
+					agent_user_id: user?.id ?? "unknown",
 					agent_chat_id: chatId,
 				});
 
@@ -139,13 +147,19 @@ export const agent = new Elysia({ prefix: "/v1/agent" })
 					const hasPermission =
 						website.isPublic ||
 						(website.organizationId &&
-							(await websitesApi.hasPermission({
-								headers: request.headers,
-								body: { permissions: { website: ["read"] } },
-							})).success);
+							(
+								await websitesApi.hasPermission({
+									headers: request.headers,
+									body: { permissions: { website: ["read"] } },
+								})
+							).success);
 
 					if (!hasPermission) {
-						return jsonError(403, "ACCESS_DENIED", "Access denied to this website");
+						return jsonError(
+							403,
+							"ACCESS_DENIED",
+							"Access denied to this website"
+						);
 					}
 
 					if (!user?.id) {
@@ -190,13 +204,10 @@ export const agent = new Elysia({ prefix: "/v1/agent" })
 						);
 					}
 
-					let modelMessages = await convertToModelMessages(
-						validation.data,
-						{
-							tools: config.tools,
-							ignoreIncompleteToolCalls: true,
-						}
-					);
+					let modelMessages = await convertToModelMessages(validation.data, {
+						tools: config.tools,
+						ignoreIncompleteToolCalls: true,
+					});
 
 					modelMessages = pruneMessages({
 						messages: modelMessages,

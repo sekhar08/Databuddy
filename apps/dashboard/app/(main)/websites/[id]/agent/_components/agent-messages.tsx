@@ -313,12 +313,7 @@ function StreamingIndicator({ statusText }: { statusText?: string }) {
 				className="size-4 shrink-0 text-muted-foreground"
 				weight="duotone"
 			/>
-			<Shimmer
-				as="span"
-				className="text-sm"
-				duration={1}
-				spread={4}
-			>
+			<Shimmer as="span" className="text-sm" duration={1} spread={4}>
 				{statusText || "Thinking"}
 			</Shimmer>
 		</div>
