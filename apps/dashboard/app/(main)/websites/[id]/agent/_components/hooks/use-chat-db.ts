@@ -97,6 +97,9 @@ export function getLastChatId(websiteId: string): string | null {
 }
 
 export function setLastChatId(websiteId: string, chatId: string): void {
+	if (!chatId || typeof chatId !== "string" || chatId.trim() === "") {
+		return;
+	}
 	safeSetItem(lastChatKey(websiteId), chatId);
 }
 
