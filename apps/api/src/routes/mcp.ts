@@ -77,7 +77,13 @@ export const mcp = new Elysia({ prefix: "/v1/mcp" })
 			{ capabilities: { tools: {} } }
 		);
 
-		const toolIds = ["ask", "list_websites", "get_data", "get_schema", "capabilities"] as const;
+		const toolIds = [
+			"ask",
+			"list_websites",
+			"get_data",
+			"get_schema",
+			"capabilities",
+		] as const;
 		for (const id of toolIds) {
 			const t = tools[id];
 			mcpServer.registerTool(
@@ -99,4 +105,3 @@ export const mcp = new Elysia({ prefix: "/v1/mcp" })
 		await mcpServer.close();
 		return response;
 	});
-	

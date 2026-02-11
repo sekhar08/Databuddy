@@ -1,8 +1,7 @@
 import { createTracker } from "@databuddy/ai/vercel";
 import { createGateway } from "ai";
 
-const apiKey =
-	process.env.AI_GATEWAY_API_KEY ?? process.env.AI_API_KEY ?? "";
+const apiKey = process.env.AI_GATEWAY_API_KEY ?? process.env.AI_API_KEY ?? "";
 
 const headers: Record<string, string> = {
 	"HTTP-Referer": "https://www.databuddy.cc/",

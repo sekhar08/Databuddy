@@ -244,16 +244,16 @@ type ProjectType = "website" | "schedule" | "link" | "organization";
 
 type ProjectAccessResult =
 	| {
-		success: true;
-		projectId: string;
-		projectType: ProjectType;
-	}
+			success: true;
+			projectId: string;
+			projectType: ProjectType;
+	  }
 	| {
-		success: false;
-		error: string;
-		code: string;
-		status?: number;
-	};
+			success: false;
+			error: string;
+			code: string;
+			status?: number;
+	  };
 
 function createAuthFailedResponse(requestId: string): Response {
 	return new Response(
@@ -677,12 +677,12 @@ function getTimeUnit(
 type ParameterInput =
 	| string
 	| {
-		name: string;
-		start_date?: string;
-		end_date?: string;
-		granularity?: string;
-		id?: string;
-	};
+			name: string;
+			start_date?: string;
+			end_date?: string;
+			granularity?: string;
+			id?: string;
+	  };
 
 function parseQueryParameter(param: ParameterInput) {
 	if (typeof param === "string") {

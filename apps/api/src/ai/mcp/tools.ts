@@ -206,7 +206,10 @@ export function createMcpTools(ctx: McpToolContext) {
 				"Run analytics query(ies). Single: type + preset or from/to. Batch: queries array (2-10). Defaults to last_7d. Supports filters, groupBy, orderBy.",
 			inputSchema: z.object({
 				websiteId: z.string().describe("Website ID from list_websites"),
-				type: z.string().optional().describe("Query type for single-query mode"),
+				type: z
+					.string()
+					.optional()
+					.describe("Query type for single-query mode"),
 				...QueryItemSchema.omit({ type: true }).shape,
 				timezone: z.string().optional().default("UTC"),
 				queries: z
@@ -234,18 +237,18 @@ export function createMcpTools(ctx: McpToolContext) {
 						? args.queries
 						: args.type
 							? [
-								{
-									type: args.type,
-									preset: args.preset,
-									from: args.from,
-									to: args.to,
-									timeUnit: args.timeUnit,
-									limit: args.limit,
-									filters: args.filters,
-									groupBy: args.groupBy,
-									orderBy: args.orderBy,
-								},
-							]
+									{
+										type: args.type,
+										preset: args.preset,
+										from: args.from,
+										to: args.to,
+										timeUnit: args.timeUnit,
+										limit: args.limit,
+										filters: args.filters,
+										groupBy: args.groupBy,
+										orderBy: args.orderBy,
+									},
+								]
 							: [];
 
 				if (items.length === 0) {
@@ -273,21 +276,21 @@ export function createMcpTools(ctx: McpToolContext) {
 					return toMcpResult(
 						isBatch
 							? {
-								batch: true,
-								results: results.map((r) => ({
-									type: r.type,
-									data: r.data,
-									rowCount: r.data.length,
-									...(r.error && { error: "Query failed" }),
-								})),
-							}
+									batch: true,
+									results: results.map((r) => ({
+										type: r.type,
+										data: r.data,
+										rowCount: r.data.length,
+										...(r.error && { error: "Query failed" }),
+									})),
+								}
 							: results[0]
 								? {
-									data: results[0].data,
-									rowCount: results[0].data.length,
-									type: results[0].type,
-									...(results[0].error && { error: "Query failed" }),
-								}
+										data: results[0].data,
+										rowCount: results[0].data.length,
+										type: results[0].type,
+										...(results[0].error && { error: "Query failed" }),
+									}
 								: { error: "Query failed" }
 					);
 				} catch {
@@ -299,8 +302,7 @@ export function createMcpTools(ctx: McpToolContext) {
 			description:
 				"Returns ClickHouse schema docs for the analytics database. Use before writing custom SQL or choosing query types.",
 			inputSchema: z.object({}),
-			handler: () =>
-				toMcpResult({ schema: CLICKHOUSE_SCHEMA_DOCS }),
+			handler: () => toMcpResult({ schema: CLICKHOUSE_SCHEMA_DOCS }),
 		},
 		capabilities: {
 			description:
