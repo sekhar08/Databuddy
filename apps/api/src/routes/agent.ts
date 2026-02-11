@@ -11,6 +11,7 @@ import {
 import { Elysia, t } from "elysia";
 import type { AgentConfig, AgentType } from "../ai/agents";
 import { createAgentConfig } from "../ai/agents";
+import { trackAgentEvent } from "../lib/databuddy";
 import { captureError, record, setAttributes } from "../lib/tracing";
 import { validateWebsite } from "../lib/website-utils";
 
@@ -171,6 +172,14 @@ export const agent = new Elysia({ prefix: "/v1/agent" })
 					const timezone = body.timezone ?? "UTC";
 					const domain = website.domain ?? "unknown";
 
+					trackAgentEvent("agent_chat_started", {
+						source: "dashboard",
+						model,
+						agent_type: agentType,
+						website_id: body.websiteId,
+						message_count: body.messages.length,
+					});
+
 					console.log("[Agent] Creating agent", {
 						type: agentType,
 						model,
@@ -227,6 +236,11 @@ export const agent = new Elysia({ prefix: "/v1/agent" })
 						originalMessages: validation.data,
 					});
 				} catch (error) {
+					trackAgentEvent("agent_chat_error", {
+						source: "dashboard",
+						model: body.model ?? "agent",
+						error_type: getErrorName(error),
+					});
 					captureError(error, {
 						agent_error: true,
 						agent_model_type: body.model ?? "agent",

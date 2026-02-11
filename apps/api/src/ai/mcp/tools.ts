@@ -8,6 +8,7 @@ import {
 	hasKeyScope,
 	hasWebsiteScope,
 } from "../../lib/api-key";
+import { trackAgentEvent } from "../../lib/databuddy";
 import { getWebsiteDomain, validateWebsite } from "../../lib/website-utils";
 import { executeBatch } from "../../query";
 import {
@@ -160,6 +161,21 @@ function toMcpResult(data: unknown, isError = false): CallToolResult {
 	};
 }
 
+function trackToolCompletion(
+	tool: string,
+	startTime: number,
+	success: boolean,
+	extra?: Record<string, unknown>
+): void {
+	trackAgentEvent("mcp_tool_completed", {
+		source: "mcp",
+		tool,
+		duration_ms: Date.now() - startTime,
+		success,
+		...extra,
+	});
+}
+
 export function createMcpTools(ctx: McpToolContext) {
 	return {
 		ask: {
@@ -177,8 +193,10 @@ export function createMcpTools(ctx: McpToolContext) {
 					),
 			}),
 			handler: async (args: { question: string; conversationId?: string }) => {
+				const startTime = Date.now();
 				try {
 					const conversationId = args.conversationId ?? crypto.randomUUID();
+					const hasFollowup = Boolean(args.conversationId);
 					const priorMessages = await getConversationHistory(
 						conversationId,
 						ctx.userId,
@@ -201,8 +219,13 @@ export function createMcpTools(ctx: McpToolContext) {
 						answer
 					);
 
+					trackToolCompletion("ask", startTime, true, {
+						has_followup: hasFollowup,
+						prior_messages: priorMessages.length,
+					});
 					return toMcpResult({ answer, conversationId });
 				} catch {
+					trackToolCompletion("ask", startTime, false);
 					return toMcpResult({ error: "Agent failed" }, true);
 				}
 			},
@@ -212,20 +235,29 @@ export function createMcpTools(ctx: McpToolContext) {
 				"List websites accessible with your API key. Use to discover website IDs before get_data. Fast, no LLM.",
 			inputSchema: z.object({}),
 			handler: async () => {
-				const authCtx = {
-					user: ctx.userId ? { id: ctx.userId } : null,
-					apiKey: ctx.apiKey,
-				};
-				const list = await getAccessibleWebsites(authCtx);
-				return toMcpResult({
-					websites: list.map((w) => ({
-						id: w.id,
-						name: w.name,
-						domain: w.domain,
-						isPublic: w.isPublic,
-					})),
-					total: list.length,
-				});
+				const startTime = Date.now();
+				try {
+					const authCtx = {
+						user: ctx.userId ? { id: ctx.userId } : null,
+						apiKey: ctx.apiKey,
+					};
+					const list = await getAccessibleWebsites(authCtx);
+					trackToolCompletion("list_websites", startTime, true, {
+						website_count: list.length,
+					});
+					return toMcpResult({
+						websites: list.map((w) => ({
+							id: w.id,
+							name: w.name,
+							domain: w.domain,
+							isPublic: w.isPublic,
+						})),
+						total: list.length,
+					});
+				} catch (err) {
+					trackToolCompletion("list_websites", startTime, false);
+					throw err;
+				}
 			},
 		},
 		get_data: {
@@ -255,12 +287,14 @@ export function createMcpTools(ctx: McpToolContext) {
 				}),
 			]),
 			handler: async (args: GetDataArgs) => {
+				const startTime = Date.now();
 				const access = await ensureWebsiteAccess(
 					args.websiteId,
 					ctx.requestHeaders,
 					ctx.apiKey
 				);
 				if (access instanceof Error) {
+					trackToolCompletion("get_data", startTime, false);
 					return toMcpResult({ error: "Request failed" }, true);
 				}
 
@@ -285,6 +319,7 @@ export function createMcpTools(ctx: McpToolContext) {
 							: [];
 
 				if (items.length === 0) {
+					trackToolCompletion("get_data", startTime, false);
 					return toMcpResult({ error: "Invalid request" }, true);
 				}
 
@@ -294,9 +329,11 @@ export function createMcpTools(ctx: McpToolContext) {
 					timezone
 				);
 				if ("error" in buildResult) {
+					trackToolCompletion("get_data", startTime, false);
 					return toMcpResult({ error: "Invalid request" }, true);
 				}
 				const requests = buildResult.requests;
+				const isBatch = requests.length > 1;
 
 				try {
 					const websiteDomain =
@@ -305,7 +342,10 @@ export function createMcpTools(ctx: McpToolContext) {
 						websiteDomain,
 						timezone,
 					});
-					const isBatch = results.length > 1;
+					trackToolCompletion("get_data", startTime, true, {
+						query_count: requests.length,
+						is_batch: isBatch,
+					});
 					return toMcpResult(
 						isBatch
 							? {
@@ -327,6 +367,7 @@ export function createMcpTools(ctx: McpToolContext) {
 								: { error: "Query failed" }
 					);
 				} catch {
+					trackToolCompletion("get_data", startTime, false);
 					return toMcpResult({ error: "Query failed" }, true);
 				}
 			},
@@ -335,13 +376,19 @@ export function createMcpTools(ctx: McpToolContext) {
 			description:
 				"Returns ClickHouse schema docs for the analytics database. Use before writing custom SQL or choosing query types.",
 			inputSchema: z.object({}),
-			handler: () => toMcpResult({ schema: CLICKHOUSE_SCHEMA_DOCS }),
+			handler: () => {
+				const startTime = Date.now();
+				trackToolCompletion("get_schema", startTime, true);
+				return toMcpResult({ schema: CLICKHOUSE_SCHEMA_DOCS });
+			},
 		},
 		capabilities: {
 			description:
 				"Query types with descriptions, date presets, schema summary, and hints.",
 			inputSchema: z.object({}),
 			handler: () => {
+				const startTime = Date.now();
+				trackToolCompletion("capabilities", startTime, true);
 				const queryTypeDescriptions = getQueryTypeDescriptions();
 				return toMcpResult({
 					queryTypes: queryTypeDescriptions,
