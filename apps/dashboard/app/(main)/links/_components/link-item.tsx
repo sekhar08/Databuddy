@@ -6,6 +6,7 @@ import {
 	ClockCountdownIcon,
 	CopyIcon,
 	DotsThreeIcon,
+	HashIcon,
 	ImageIcon,
 	LinkIcon,
 	PencilSimpleIcon,
@@ -14,7 +15,6 @@ import {
 } from "@phosphor-icons/react";
 import NextLink from "next/link";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -24,85 +24,24 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Link } from "@/hooks/use-links";
 import { fromNow, localDayjs } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 const LINKS_BASE_URL = "https://dby.sh";
 
-function ShortUrlCopy({
-	slug,
-	onClick,
-}: {
-	slug: string;
-	onClick: (e: React.MouseEvent) => void;
-}) {
-	const shortUrl = `${LINKS_BASE_URL.replace("https://", "")}/${slug}`;
-
-	return (
-		<button
-			aria-label={`Copy ${shortUrl}`}
-			className="flex shrink-0 items-center gap-1.5 rounded border border-transparent bg-muted px-2 py-1 font-mono text-xs transition-colors hover:border-border hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover:border-border group-hover:bg-background"
-			onClick={onClick}
-			type="button"
-		>
-			<span className="text-foreground">{shortUrl}</span>
-			<CopyIcon
-				aria-hidden="true"
-				className="size-3 text-muted-foreground"
-				weight="duotone"
-			/>
-		</button>
-	);
-}
-
-function LinkFeatures({ link }: { link: Link }) {
-	const hasOg = Boolean(link.ogTitle ?? link.ogDescription ?? link.ogImageUrl);
-	const hasIos = Boolean(link.iosUrl);
-	const hasAndroid = Boolean(link.androidUrl);
-	const hasAnyFeature = hasOg || hasIos || hasAndroid;
-
-	if (!hasAnyFeature) {
-		return null;
+function formatTarget(targetUrl: string): string {
+	try {
+		const parsed = new URL(targetUrl);
+		return parsed.host + (parsed.pathname !== "/" ? parsed.pathname : "");
+	} catch {
+		return targetUrl;
 	}
-
-	return (
-		<div
-			aria-hidden="true"
-			className="flex items-center gap-1 text-muted-foreground"
-		>
-			{hasOg && <ImageIcon className="size-3.5" weight="duotone" />}
-			{hasIos && <AppleLogoIcon className="size-3.5" weight="duotone" />}
-			{hasAndroid && <AndroidLogoIcon className="size-3.5" weight="duotone" />}
-		</div>
-	);
-}
-
-function ExpirationBadge({ link }: { link: Link }) {
-	if (!link.expiresAt) {
-		return null;
-	}
-
-	const expiresAt = localDayjs(link.expiresAt);
-	const isExpired = expiresAt.isBefore(localDayjs());
-	const isExpiringSoon =
-		!isExpired && expiresAt.isBefore(localDayjs().add(7, "day"));
-
-	return (
-		<Badge
-			className="gap-1"
-			variant={
-				isExpired ? "destructive" : isExpiringSoon ? "amber" : "secondary"
-			}
-		>
-			<ClockCountdownIcon
-				aria-hidden="true"
-				className="size-3"
-				weight="duotone"
-			/>
-			{isExpired ? "Expired" : expiresAt.fromNow(true)}
-		</Badge>
-	);
 }
 
 function LinkActions({
@@ -110,30 +49,35 @@ function LinkActions({
 	onEdit,
 	onDelete,
 	onShowQr,
-	onCopy,
 }: {
 	link: Link;
 	onEdit: (link: Link) => void;
 	onDelete: (linkId: string) => void;
 	onShowQr: (link: Link) => void;
-	onCopy: (e?: React.MouseEvent) => void;
 }) {
+	const handleCopy = () => {
+		navigator.clipboard
+			.writeText(`${LINKS_BASE_URL}/${link.slug}`)
+			.then(() => toast.success("Copied to clipboard"))
+			.catch(() => toast.error("Failed to copy"));
+	};
+
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button
 					aria-label="Link actions"
-					className="size-8 opacity-50 hover:opacity-100 data-[state=open]:opacity-100"
+					className="size-7 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100"
 					size="icon"
 					variant="ghost"
 				>
-					<DotsThreeIcon className="size-5" weight="bold" />
+					<DotsThreeIcon className="size-4" weight="bold" />
 				</Button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className="w-44">
-				<DropdownMenuItem className="gap-2" onClick={onCopy}>
+			<DropdownMenuContent align="end" className="w-40">
+				<DropdownMenuItem className="gap-2" onClick={handleCopy}>
 					<CopyIcon className="size-4" weight="duotone" />
-					Copy Link
+					Copy URL
 				</DropdownMenuItem>
 				<DropdownMenuItem className="gap-2" onClick={() => onShowQr(link)}>
 					<QrCodeIcon className="size-4" weight="duotone" />
@@ -142,7 +86,7 @@ function LinkActions({
 				<DropdownMenuSeparator />
 				<DropdownMenuItem className="gap-2" onClick={() => onEdit(link)}>
 					<PencilSimpleIcon className="size-4" weight="duotone" />
-					Edit Link
+					Edit
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
@@ -151,112 +95,187 @@ function LinkActions({
 					variant="destructive"
 				>
 					<TrashIcon className="size-4" weight="duotone" />
-					Delete Link
+					Delete
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
 }
 
-function formatTargetUrl(targetUrl: string): string {
+function shortenId(id: string): string {
+	if (id.length <= 8) {
+		return id;
+	}
+	return `${id.slice(0, 3)}…${id.slice(-3)}`;
+}
+
+function shortenUrl(url: string): string {
 	try {
-		const parsed = new URL(targetUrl);
-		let display =
-			parsed.host + (parsed.pathname !== "/" ? parsed.pathname : "");
-		if (display.length > 50) {
-			display = `${display.slice(0, 47)}…`;
-		}
-		return display;
+		return new URL(url).host;
 	} catch {
-		return targetUrl.length > 50 ? `${targetUrl.slice(0, 47)}…` : targetUrl;
+		return url.length <= 12 ? url : `${url.slice(0, 9)}…`;
 	}
 }
 
-interface LinkRowProps {
+function LinkIndicators({ link }: { link: Link }) {
+	const hasOg = Boolean(link.ogTitle ?? link.ogDescription ?? link.ogImageUrl);
+	const hasIos = Boolean(link.iosUrl);
+	const hasAndroid = Boolean(link.androidUrl);
+
+	const isExpired =
+		link.expiresAt && localDayjs(link.expiresAt).isBefore(localDayjs());
+	const isExpiringSoon =
+		link.expiresAt &&
+		!isExpired &&
+		localDayjs(link.expiresAt).isBefore(localDayjs().add(7, "day"));
+
+	const tags: Array<{
+		key: string;
+		icon: React.ReactNode;
+		text: string;
+		tooltip?: string;
+		className?: string;
+	}> = [];
+
+	if (isExpired) {
+		tags.push({
+			key: "expired",
+			icon: <ClockCountdownIcon className="size-3" weight="duotone" />,
+			text: "Expired",
+			className: "text-destructive",
+		});
+	} else if (isExpiringSoon && link.expiresAt) {
+		tags.push({
+			key: "expiring",
+			icon: <ClockCountdownIcon className="size-3" weight="duotone" />,
+			text: localDayjs(link.expiresAt).fromNow(true),
+			tooltip: `Expires ${localDayjs(link.expiresAt).format("MMM D, YYYY")}`,
+			className: "text-amber-500",
+		});
+	}
+
+	if (link.externalId) {
+		tags.push({
+			key: "ext",
+			icon: <HashIcon className="size-3" weight="duotone" />,
+			text: shortenId(link.externalId),
+			tooltip: link.externalId.length > 8 ? link.externalId : undefined,
+		});
+	}
+
+	if (hasOg) {
+		tags.push({
+			key: "og",
+			icon: <ImageIcon className="size-3" weight="duotone" />,
+			text: "OG",
+		});
+	}
+
+	if (hasIos && link.iosUrl) {
+		tags.push({
+			key: "ios",
+			icon: <AppleLogoIcon className="size-3" weight="duotone" />,
+			text: shortenUrl(link.iosUrl),
+			tooltip: link.iosUrl,
+		});
+	}
+
+	if (hasAndroid && link.androidUrl) {
+		tags.push({
+			key: "android",
+			icon: <AndroidLogoIcon className="size-3" weight="duotone" />,
+			text: shortenUrl(link.androidUrl),
+			tooltip: link.androidUrl,
+		});
+	}
+
+	if (tags.length === 0) {
+		return null;
+	}
+
+	return (
+		<div className="flex shrink-0 items-center gap-1.5">
+			{tags.map((tag) => {
+				const content = (
+					<span
+						className={cn(
+							"flex items-center gap-0.5 rounded bg-muted px-1 py-px font-mono text-[10px] text-muted-foreground leading-tight",
+							tag.className
+						)}
+					>
+						{tag.icon}
+						{tag.text}
+					</span>
+				);
+
+				if (tag.tooltip) {
+					return (
+						<Tooltip delayDuration={200} key={tag.key}>
+							<TooltipTrigger asChild>{content}</TooltipTrigger>
+							<TooltipContent side="top">{tag.tooltip}</TooltipContent>
+						</Tooltip>
+					);
+				}
+
+				return <span key={tag.key}>{content}</span>;
+			})}
+		</div>
+	);
+}
+
+function LinkRow({
+	link,
+	onEdit,
+	onDelete,
+	onShowQr,
+}: {
 	link: Link;
 	onEdit: (link: Link) => void;
 	onDelete: (linkId: string) => void;
 	onShowQr: (link: Link) => void;
-}
-
-function LinkRow({ link, onEdit, onDelete, onShowQr }: LinkRowProps) {
-	const displayTargetUrl = formatTargetUrl(link.targetUrl);
+}) {
 	const isExpired =
 		link.expiresAt && localDayjs(link.expiresAt).isBefore(localDayjs());
-
-	const handleCopy = async (e?: React.MouseEvent) => {
-		e?.preventDefault();
-		e?.stopPropagation();
-		try {
-			await navigator.clipboard.writeText(`${LINKS_BASE_URL}/${link.slug}`);
-			toast.success("Link copied to clipboard");
-		} catch {
-			toast.error("Failed to copy link");
-		}
-	};
 
 	return (
 		<NextLink
 			className={cn(
-				"group flex h-20 w-full items-center gap-4 border-b px-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-				isExpired && "opacity-60"
+				"group flex w-full items-center gap-3 border-b px-4 py-2.5 transition-colors hover:bg-accent/50",
+				isExpired && "opacity-50"
 			)}
 			href={`/links/${link.id}`}
 		>
-			{/* Link icon */}
-			<div
-				aria-hidden="true"
-				className="shrink-0 rounded border border-transparent bg-accent p-2 text-primary transition-colors group-hover:border-primary/20 group-hover:bg-primary/10"
-			>
-				<LinkIcon className="size-5" weight="duotone" />
+			<div className="shrink-0 rounded bg-accent p-1.5 text-blue-500">
+				<LinkIcon className="size-4" weight="duotone" />
 			</div>
 
-			{/* Name and URLs */}
 			<div className="min-w-0 flex-1">
-				<div className="flex items-center gap-2">
-					<p className="truncate font-medium text-foreground text-sm">
-						{link.name}
-					</p>
-					{link.externalId && (
-						<Badge
-							className="shrink-0 font-normal"
-							title="External ID (queryable)"
-							variant="outline"
-						>
-							{link.externalId}
-						</Badge>
-					)}
-					<LinkFeatures link={link} />
+				<div className="flex items-center gap-1.5">
+					<span className="truncate font-medium text-sm">{link.name}</span>
+					<LinkIndicators link={link} />
 				</div>
-				<div className="mt-1 flex items-center gap-2">
-					<ShortUrlCopy onClick={handleCopy} slug={link.slug} />
-					<span className="hidden truncate text-muted-foreground text-xs sm:inline">
-						→ {displayTargetUrl}
-					</span>
-				</div>
+				<p className="truncate text-muted-foreground text-xs">
+					dby.sh/{link.slug}
+					<span className="mx-1 text-muted-foreground/40">→</span>
+					{formatTarget(link.targetUrl)}
+				</p>
 			</div>
 
-			{/* Expiration - desktop only */}
-			<div className="hidden shrink-0 md:block">
-				<ExpirationBadge link={link} />
-			</div>
+			<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
+				{fromNow(link.createdAt)}
+			</span>
 
-			{/* Created date - desktop only */}
-			<div className="hidden w-20 shrink-0 text-right sm:block">
-				<span className="text-muted-foreground text-sm">
-					{fromNow(link.createdAt)}
-				</span>
-			</div>
-
-			{/* Actions */}
 			<div
 				className="shrink-0"
-				onClick={(e) => e.preventDefault()}
+				onClick={(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+				}}
+				onKeyDown={(e) => e.stopPropagation()}
 				role="presentation"
 			>
 				<LinkActions
 					link={link}
-					onCopy={handleCopy}
 					onDelete={onDelete}
 					onEdit={onEdit}
 					onShowQr={onShowQr}
@@ -299,42 +318,31 @@ export function LinksListSkeleton() {
 		<div className="w-full">
 			{Array.from({ length: 5 }).map((_, i) => (
 				<div
-					className="flex h-20 items-center gap-4 border-b px-4"
+					className="flex items-center gap-3 border-b px-4 py-2.5"
 					key={`skeleton-${i + 1}`}
 				>
-					<Skeleton className="size-9 shrink-0 rounded" />
-					<div className="min-w-0 flex-1 space-y-2">
+					<Skeleton className="size-7 shrink-0 rounded" />
+					<div className="min-w-0 flex-1 space-y-1.5">
 						<Skeleton className="h-4 w-32" />
-						<div className="flex items-center gap-2">
-							<Skeleton className="h-6 w-28" />
-							<Skeleton className="hidden h-3 w-40 sm:block" />
-						</div>
+						<Skeleton className="h-3 w-48" />
 					</div>
-					<Skeleton className="hidden h-5 w-16 md:block" />
-					<Skeleton className="hidden h-4 w-20 sm:block" />
-					<Skeleton className="size-8 shrink-0 rounded" />
+					<Skeleton className="h-3 w-10 shrink-0" />
 				</div>
 			))}
 		</div>
 	);
 }
 
-// Legacy exports for backward compatibility
 export { LinkRow as LinkItem };
 export function LinkItemSkeleton() {
 	return (
-		<div className="flex h-20 items-center gap-4 border-b px-4">
-			<Skeleton className="size-9 shrink-0 rounded" />
-			<div className="min-w-0 flex-1 space-y-2">
+		<div className="flex items-center gap-3 border-b px-4 py-2.5">
+			<Skeleton className="size-7 shrink-0 rounded" />
+			<div className="min-w-0 flex-1 space-y-1.5">
 				<Skeleton className="h-4 w-32" />
-				<div className="flex items-center gap-2">
-					<Skeleton className="h-6 w-28" />
-					<Skeleton className="hidden h-3 w-40 sm:block" />
-				</div>
+				<Skeleton className="h-3 w-48" />
 			</div>
-			<Skeleton className="hidden h-5 w-16 md:block" />
-			<Skeleton className="hidden h-4 w-20 sm:block" />
-			<Skeleton className="size-8 shrink-0 rounded" />
+			<Skeleton className="h-3 w-10 shrink-0" />
 		</div>
 	);
 }
