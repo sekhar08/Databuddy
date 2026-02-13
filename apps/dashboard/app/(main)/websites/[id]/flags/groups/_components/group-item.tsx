@@ -9,7 +9,6 @@ import {
 	UsersThreeIcon,
 	WrenchIcon,
 } from "@phosphor-icons/react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -29,6 +28,20 @@ export interface GroupItemProps {
 	onSelect?: () => void;
 }
 
+function getRuleTypeLabel(type: string, count: number) {
+	const plural = count !== 1;
+	switch (type) {
+		case "email":
+			return plural ? "emails" : "email";
+		case "user_id":
+			return plural ? "users" : "user";
+		case "property":
+			return plural ? "properties" : "property";
+		default:
+			return plural ? "rules" : "rule";
+	}
+}
+
 function getRuleIcon(type: string) {
 	switch (type) {
 		case "email":
@@ -40,17 +53,108 @@ function getRuleIcon(type: string) {
 	}
 }
 
-function getRuleTypeLabel(type: string) {
-	switch (type) {
-		case "email":
-			return "emails";
-		case "user_id":
-			return "users";
-		case "property":
-			return "properties";
-		default:
-			return "rules";
+function buildRuleSummary(group: TargetGroup): string {
+	const rules = group.rules ?? [];
+	if (rules.length === 0 && !group.memberCount) {
+		return "No rules configured";
 	}
+
+	const counts = rules.reduce(
+		(acc, rule) => {
+			acc[rule.type] = (acc[rule.type] ?? 0) + 1;
+			return acc;
+		},
+		{} as Record<string, number>
+	);
+
+	const parts: string[] = [];
+	for (const [type, count] of Object.entries(counts)) {
+		parts.push(`${count} ${getRuleTypeLabel(type, count)}`);
+	}
+
+	if (group.memberCount !== undefined && group.memberCount > 0) {
+		parts.push(
+			`${group.memberCount} member${group.memberCount !== 1 ? "s" : ""}`
+		);
+	}
+
+	return parts.join(" · ");
+}
+
+function GroupActions({
+	group,
+	onEdit,
+	onDelete,
+}: {
+	group: TargetGroup;
+	onEdit: (group: TargetGroup) => void;
+	onDelete: (groupId: string) => void;
+}) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					aria-label="Group actions"
+					className="size-8 opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100"
+					size="icon"
+					variant="ghost"
+				>
+					<DotsThreeIcon className="size-5" weight="bold" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-40">
+				<DropdownMenuItem className="gap-2" onClick={() => onEdit(group)}>
+					<PencilSimpleIcon className="size-4" weight="duotone" />
+					Edit
+				</DropdownMenuItem>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem
+					className="gap-2 text-destructive focus:text-destructive"
+					onClick={() => onDelete(group.id)}
+					variant="destructive"
+				>
+					<TrashIcon className="size-4" weight="duotone" />
+					Delete
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+function RuleIndicators({ group }: { group: TargetGroup }) {
+	const rules = group.rules ?? [];
+	if (rules.length === 0) {
+		return null;
+	}
+
+	const counts = rules.reduce(
+		(acc, rule) => {
+			acc[rule.type] = (acc[rule.type] ?? 0) + 1;
+			return acc;
+		},
+		{} as Record<string, number>
+	);
+
+	return (
+		<div className="flex shrink-0 items-center gap-1">
+			{Object.entries(counts).map(([type, count]) => {
+				const RuleIcon = getRuleIcon(type);
+				return (
+					<span
+						className="flex items-center gap-0.5 rounded bg-muted px-1 py-px font-mono text-[11px] text-muted-foreground leading-tight"
+						key={type}
+					>
+						<RuleIcon
+							className="size-3"
+							style={{ color: group.color }}
+							weight="duotone"
+						/>
+						{count} {getRuleTypeLabel(type, count)}
+					</span>
+				);
+			})}
+		</div>
+	);
 }
 
 export function GroupItem({
@@ -60,125 +164,55 @@ export function GroupItem({
 	isSelected,
 	onSelect,
 }: GroupItemProps) {
-	const ruleCount = group.rules?.length ?? 0;
-
-	const ruleSummary = group.rules?.reduce(
-		(acc, rule) => {
-			acc[rule.type] = (acc[rule.type] ?? 0) + 1;
-			return acc;
-		},
-		{} as Record<string, number>
-	);
+	const summary = buildRuleSummary(group);
 
 	return (
-		<div className={cn("border-border border-b", isSelected && "bg-accent/30")}>
-			<div className="group flex items-center hover:bg-accent/50">
-				{/* Clickable area for editing */}
-				<button
-					className="flex flex-1 cursor-pointer items-center gap-4 px-4 py-3 text-left sm:px-6 sm:py-4"
-					onClick={() => {
-						if (onSelect) {
-							onSelect();
-						} else {
-							onEdit(group);
-						}
-					}}
-					type="button"
-				>
-					{/* Group details */}
-					<div className="min-w-0 flex-1">
-						<div className="flex items-center gap-2">
-							<div
-								className="flex size-8 shrink-0 items-center justify-center rounded"
-								style={{ backgroundColor: `${group.color}20` }}
-							>
-								<UsersThreeIcon
-									className="size-4"
-									style={{ color: group.color }}
-									weight="duotone"
-								/>
-							</div>
-							<h3 className="truncate font-medium text-foreground">
-								{group.name}
-							</h3>
-							{ruleCount > 0 && (
-								<Badge className="shrink-0" variant="gray">
-									{ruleCount} rule{ruleCount !== 1 ? "s" : ""}
-								</Badge>
-							)}
-						</div>
-						{group.description && (
-							<p className="mt-0.5 line-clamp-1 text-muted-foreground text-sm">
-								{group.description}
-							</p>
-						)}
-						{/* Rule stats */}
-						<div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-							{ruleCount > 0 &&
-								Object.entries(ruleSummary ?? {}).map(([type, count]) => {
-									const RuleIcon = getRuleIcon(type);
-									return (
-										<Badge
-											className="gap-1 border text-xs"
-											key={type}
-											style={{
-												borderColor: `${group.color}40`,
-												backgroundColor: `${group.color}10`,
-											}}
-											variant="outline"
-										>
-											<RuleIcon
-												className="size-3"
-												style={{ color: group.color }}
-												weight="duotone"
-											/>
-											<span className="tabular-nums">{count}</span>
-											<span className="text-muted-foreground">
-												{getRuleTypeLabel(type)}
-											</span>
-										</Badge>
-									);
-								})}
-							{group.memberCount !== undefined && group.memberCount > 0 && (
-								<span className="text-muted-foreground text-xs">
-									<span className="tabular-nums">{group.memberCount}</span>{" "}
-									member{group.memberCount !== 1 ? "s" : ""}
-								</span>
-							)}
-						</div>
-					</div>
-				</button>
-
-				{/* Actions dropdown - separate from clickable area */}
-				<div className="shrink-0 pr-4 sm:pr-6">
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button
-								aria-label="Group actions"
-								className="size-8 opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100"
-								size="icon"
-								variant="ghost"
-							>
-								<DotsThreeIcon className="size-5" weight="bold" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-40">
-							<DropdownMenuItem onClick={() => onEdit(group)}>
-								<PencilSimpleIcon className="size-4" weight="duotone" />
-								Edit
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								className="text-destructive focus:text-destructive"
-								onClick={() => onDelete(group.id)}
-							>
-								<TrashIcon className="size-4" weight="duotone" />
-								Delete
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</div>
+		<button
+			className={cn(
+				"group flex h-15 w-full items-center gap-3 border-b px-4 text-left transition-colors hover:bg-accent/50",
+				isSelected && "bg-accent/30"
+			)}
+			onClick={() => {
+				if (onSelect) {
+					onSelect();
+				} else {
+					onEdit(group);
+				}
+			}}
+			type="button"
+		>
+			{/* Group icon */}
+			<div
+				className="shrink-0 rounded p-1.5"
+				style={{ backgroundColor: `${group.color}20` }}
+			>
+				<UsersThreeIcon
+					className="size-4"
+					style={{ color: group.color }}
+					weight="duotone"
+				/>
 			</div>
-		</div>
+
+			{/* Name + indicators + description */}
+			<div className="flex min-w-0 flex-1 items-center gap-2">
+				<span className="max-w-48 truncate font-medium text-sm">
+					{group.name}
+				</span>
+				<RuleIndicators group={group} />
+				<span className="truncate text-muted-foreground text-xs">
+					{group.description ?? summary}
+				</span>
+			</div>
+
+			{/* Actions — always at the end */}
+			<div
+				className="shrink-0"
+				onClick={(e) => e.stopPropagation()}
+				onKeyDown={(e) => e.stopPropagation()}
+				role="presentation"
+			>
+				<GroupActions group={group} onDelete={onDelete} onEdit={onEdit} />
+			</div>
+		</button>
 	);
 }

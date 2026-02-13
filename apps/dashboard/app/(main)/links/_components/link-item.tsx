@@ -140,14 +140,14 @@ function LinkIndicators({ link }: { link: Link }) {
 	if (isExpired) {
 		tags.push({
 			key: "expired",
-			icon: <ClockCountdownIcon className="size-3" weight="duotone" />,
+			icon: <ClockCountdownIcon className="size-3.5" weight="duotone" />,
 			text: "Expired",
 			className: "text-destructive",
 		});
 	} else if (isExpiringSoon && link.expiresAt) {
 		tags.push({
 			key: "expiring",
-			icon: <ClockCountdownIcon className="size-3" weight="duotone" />,
+			icon: <ClockCountdownIcon className="size-3.5" weight="duotone" />,
 			text: localDayjs(link.expiresAt).fromNow(true),
 			tooltip: `Expires ${localDayjs(link.expiresAt).format("MMM D, YYYY")}`,
 			className: "text-amber-500",
@@ -157,7 +157,7 @@ function LinkIndicators({ link }: { link: Link }) {
 	if (link.externalId) {
 		tags.push({
 			key: "ext",
-			icon: <HashIcon className="size-3" weight="duotone" />,
+			icon: <HashIcon className="size-3.5" weight="duotone" />,
 			text: shortenId(link.externalId),
 			tooltip: link.externalId.length > 8 ? link.externalId : undefined,
 		});
@@ -166,7 +166,7 @@ function LinkIndicators({ link }: { link: Link }) {
 	if (hasOg) {
 		tags.push({
 			key: "og",
-			icon: <ImageIcon className="size-3" weight="duotone" />,
+			icon: <ImageIcon className="size-3.5" weight="duotone" />,
 			text: "OG",
 		});
 	}
@@ -174,7 +174,7 @@ function LinkIndicators({ link }: { link: Link }) {
 	if (hasIos && link.iosUrl) {
 		tags.push({
 			key: "ios",
-			icon: <AppleLogoIcon className="size-3" weight="duotone" />,
+			icon: <AppleLogoIcon className="size-3.5" weight="duotone" />,
 			text: shortenUrl(link.iosUrl),
 			tooltip: link.iosUrl,
 		});
@@ -183,7 +183,7 @@ function LinkIndicators({ link }: { link: Link }) {
 	if (hasAndroid && link.androidUrl) {
 		tags.push({
 			key: "android",
-			icon: <AndroidLogoIcon className="size-3" weight="duotone" />,
+			icon: <AndroidLogoIcon className="size-3.5" weight="duotone" />,
 			text: shortenUrl(link.androidUrl),
 			tooltip: link.androidUrl,
 		});
@@ -199,7 +199,7 @@ function LinkIndicators({ link }: { link: Link }) {
 				const content = (
 					<span
 						className={cn(
-							"flex items-center gap-0.5 rounded bg-muted px-1 py-px font-mono text-[10px] text-muted-foreground leading-tight",
+							"flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono text-muted-foreground text-xs",
 							tag.className
 						)}
 					>
@@ -240,28 +240,28 @@ function LinkRow({
 	return (
 		<NextLink
 			className={cn(
-				"group flex w-full items-center gap-3 border-b px-4 py-2.5 transition-colors hover:bg-accent/50",
+				"group flex h-20 w-full items-center gap-4 border-b px-4 transition-colors hover:bg-accent/50",
 				isExpired && "opacity-50"
 			)}
 			href={`/links/${link.id}`}
 		>
-			<div className="shrink-0 rounded bg-accent p-1.5 text-blue-500">
-				<LinkIcon className="size-4" weight="duotone" />
+			<div className="shrink-0 rounded bg-accent p-2 text-blue-500">
+				<LinkIcon className="size-5" weight="duotone" />
 			</div>
 
-			<div className="min-w-0 flex-1">
-				<div className="flex items-center gap-1.5">
-					<span className="truncate font-medium text-sm">{link.name}</span>
+			<div className="min-w-0 flex-1 space-y-1">
+				<div className="flex items-center gap-2">
+					<span className="truncate font-medium text-[15px]">{link.name}</span>
 					<LinkIndicators link={link} />
 				</div>
-				<p className="truncate text-muted-foreground text-xs">
+				<p className="truncate text-muted-foreground text-sm">
 					dby.sh/{link.slug}
-					<span className="mx-1 text-muted-foreground/40">→</span>
+					<span className="mx-1.5 text-muted-foreground/40">→</span>
 					{formatTarget(link.targetUrl)}
 				</p>
 			</div>
 
-			<span className="shrink-0 text-muted-foreground text-xs tabular-nums">
+			<span className="shrink-0 text-muted-foreground text-sm tabular-nums">
 				{fromNow(link.createdAt)}
 			</span>
 
@@ -318,15 +318,15 @@ export function LinksListSkeleton() {
 		<div className="w-full">
 			{Array.from({ length: 5 }).map((_, i) => (
 				<div
-					className="flex items-center gap-3 border-b px-4 py-2.5"
+					className="flex h-20 items-center gap-4 border-b px-4"
 					key={`skeleton-${i + 1}`}
 				>
-					<Skeleton className="size-7 shrink-0 rounded" />
-					<div className="min-w-0 flex-1 space-y-1.5">
-						<Skeleton className="h-4 w-32" />
-						<Skeleton className="h-3 w-48" />
+					<Skeleton className="size-9 shrink-0 rounded" />
+					<div className="min-w-0 flex-1 space-y-2">
+						<Skeleton className="h-5 w-36" />
+						<Skeleton className="h-4 w-52" />
 					</div>
-					<Skeleton className="h-3 w-10 shrink-0" />
+					<Skeleton className="h-4 w-12 shrink-0" />
 				</div>
 			))}
 		</div>
@@ -336,13 +336,13 @@ export function LinksListSkeleton() {
 export { LinkRow as LinkItem };
 export function LinkItemSkeleton() {
 	return (
-		<div className="flex items-center gap-3 border-b px-4 py-2.5">
-			<Skeleton className="size-7 shrink-0 rounded" />
-			<div className="min-w-0 flex-1 space-y-1.5">
-				<Skeleton className="h-4 w-32" />
-				<Skeleton className="h-3 w-48" />
+		<div className="flex h-20 items-center gap-4 border-b px-4">
+			<Skeleton className="size-9 shrink-0 rounded" />
+			<div className="min-w-0 flex-1 space-y-2">
+				<Skeleton className="h-5 w-36" />
+				<Skeleton className="h-4 w-52" />
 			</div>
-			<Skeleton className="h-3 w-10 shrink-0" />
+			<Skeleton className="h-4 w-12 shrink-0" />
 		</div>
 	);
 }

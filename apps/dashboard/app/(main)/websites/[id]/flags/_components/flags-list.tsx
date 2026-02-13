@@ -297,7 +297,7 @@ function FlagRow({
 	return (
 		<button
 			className={cn(
-				"group flex min-w-full cursor-pointer items-center gap-4 border-b px-4 py-3 text-left transition-colors hover:bg-accent/50",
+				"group flex h-15 min-w-full cursor-pointer items-center gap-4 border-b px-4 text-left transition-colors hover:bg-accent/50",
 				{ "opacity-50": flag.status === "archived" }
 			)}
 			onClick={() => onEdit(flag)}
@@ -449,7 +449,7 @@ export function FlagsListSkeleton() {
 		<div className="w-full overflow-x-auto">
 			{Array.from({ length: 5 }).map((_, i) => (
 				<div
-					className="flex items-center gap-4 border-b px-4 py-3"
+					className="flex h-15 items-center gap-4 border-b px-4"
 					key={`skeleton-${i + 1}`}
 				>
 					<div className="flex min-w-[280px] shrink-0 items-center gap-3">

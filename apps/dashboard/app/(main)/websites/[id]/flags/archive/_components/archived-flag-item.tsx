@@ -55,10 +55,10 @@ export function ArchivedFlagItem({
 
 	return (
 		<div className={cn("border-border border-b", className)}>
-			<div className="group flex items-center hover:bg-accent/50">
+			<div className="group flex h-15 items-center hover:bg-accent/50">
 				{/* Clickable area for editing */}
 				<button
-					className="flex flex-1 cursor-pointer items-center gap-4 px-4 py-3 text-left sm:px-6 sm:py-4"
+					className="flex flex-1 cursor-pointer items-center gap-4 px-4 text-left sm:px-6"
 					onClick={() => onEdit(flag)}
 					type="button"
 				>

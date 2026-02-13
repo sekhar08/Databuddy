@@ -14,23 +14,16 @@ import { GroupSheet } from "./_components/group-sheet";
 import { GroupsList } from "./_components/groups-list";
 
 const GroupsListSkeleton = () => (
-	<div className="border-border border-t">
+	<div>
 		{[...new Array(5)].map((_, i) => (
 			<div
-				className="flex animate-pulse items-center border-border border-b px-4 py-4 sm:px-6"
+				className="flex h-15 animate-pulse items-center gap-3 border-b px-4"
 				key={`group-skeleton-${i + 1}`}
 			>
-				<div className="flex flex-1 items-center gap-4">
-					<div className="min-w-0 flex-1 space-y-2">
-						<div className="flex items-center gap-2">
-							<div className="size-8 rounded bg-muted" />
-							<div className="h-5 w-40 rounded bg-muted" />
-							<div className="h-5 w-16 rounded bg-muted" />
-						</div>
-						<div className="h-4 w-48 rounded bg-muted" />
-					</div>
-					<div className="size-8 rounded bg-muted" />
-				</div>
+				<div className="size-7 shrink-0 rounded bg-muted" />
+				<div className="h-4 w-28 rounded bg-muted" />
+				<div className="h-3.5 w-16 rounded bg-muted" />
+				<div className="h-3 w-40 flex-1 rounded bg-muted" />
 			</div>
 		))}
 	</div>
