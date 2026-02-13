@@ -169,9 +169,9 @@ export const SessionsBuilders: Record<string, SimpleQueryConfig> = {
           THEN CAST(ce.properties AS String)
           ELSE NULL
         END as properties
-      FROM ${Analytics.custom_event_spans} ce
+      FROM ${Analytics.custom_events} ce
       INNER JOIN session_list sl ON ce.session_id = sl.session_id
-      WHERE ce.client_id = {websiteId:String}
+      WHERE ce.website_id = {websiteId:String}
     ),
     session_events AS (
       SELECT

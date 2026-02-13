@@ -178,26 +178,26 @@ const fetchCustomEventInsights = (
     WITH 
       current_period AS (
         SELECT 
-          client_id as websiteId,
+          website_id as websiteId,
           event_name as eventName,
           count() as eventCount
-        FROM analytics.custom_event_spans
+        FROM analytics.custom_events
         WHERE 
-          client_id IN {websiteIds:Array(String)}
+          website_id IN {websiteIds:Array(String)}
           AND timestamp >= now() - INTERVAL 24 HOUR
-        GROUP BY client_id, event_name
+        GROUP BY website_id, event_name
       ),
       previous_period AS (
         SELECT 
-          client_id as websiteId,
+          website_id as websiteId,
           event_name as eventName,
           count() as eventCount
-        FROM analytics.custom_event_spans
+        FROM analytics.custom_events
         WHERE 
-          client_id IN {websiteIds:Array(String)}
+          website_id IN {websiteIds:Array(String)}
           AND timestamp >= now() - INTERVAL 48 HOUR
           AND timestamp < now() - INTERVAL 24 HOUR
-        GROUP BY client_id, event_name
+        GROUP BY website_id, event_name
       )
     SELECT 
       COALESCE(c.websiteId, p.websiteId) as websiteId,

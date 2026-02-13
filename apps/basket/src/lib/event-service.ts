@@ -210,13 +210,16 @@ export function insertOutgoingLink(
 
 		const now = Date.now();
 
+		const salt = await getDailySalt();
+		const rawId = sanitizeString(
+			linkData.anonymousId,
+			VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
+		);
+
 		const outgoingLinkEvent: CustomOutgoingLink = {
 			id: randomUUID(),
 			client_id: clientId,
-			anonymous_id: sanitizeString(
-				linkData.anonymousId,
-				VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
-			),
+			anonymous_id: rawId ? saltAnonymousId(rawId, salt) : rawId,
 			session_id: validateSessionId(linkData.sessionId),
 			href: sanitizeString(linkData.href, VALIDATION_LIMITS.PATH_MAX_LENGTH),
 			text: sanitizeString(linkData.text, VALIDATION_LIMITS.TEXT_MAX_LENGTH),
@@ -253,22 +256,26 @@ export function insertCustomEventSpans(
 			client_id: clientId,
 		});
 
+		const salt = await getDailySalt();
 		const now = Date.now();
-		const spans: CustomEventSpan[] = events.map((event) => ({
-			client_id: clientId,
-			anonymous_id: sanitizeString(
+		const spans: CustomEventSpan[] = events.map((event) => {
+			const rawId = sanitizeString(
 				event.anonymousId,
 				VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
-			),
-			session_id: validateSessionId(event.sessionId),
-			timestamp: typeof event.timestamp === "number" ? event.timestamp : now,
-			path: sanitizeString(event.path, VALIDATION_LIMITS.STRING_MAX_LENGTH),
-			event_name: sanitizeString(
-				event.eventName,
-				VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
-			),
-			properties: (event.properties as Record<string, unknown>) ?? {},
-		}));
+			);
+			return {
+				client_id: clientId,
+				anonymous_id: rawId ? saltAnonymousId(rawId, salt) : rawId,
+				session_id: validateSessionId(event.sessionId),
+				timestamp: typeof event.timestamp === "number" ? event.timestamp : now,
+				path: sanitizeString(event.path, VALIDATION_LIMITS.STRING_MAX_LENGTH),
+				event_name: sanitizeString(
+					event.eventName,
+					VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
+				),
+				properties: (event.properties as Record<string, unknown>) ?? {},
+			};
+		});
 
 		try {
 			await sendEventBatch("analytics-custom-event-spans", spans);
@@ -317,33 +324,37 @@ export function insertErrorSpans(
 			client_id: clientId,
 		});
 
+		const salt = await getDailySalt();
 		const now = Date.now();
-		const spans: ErrorSpanRow[] = errors.map((error) => ({
-			client_id: clientId,
-			anonymous_id: sanitizeString(
+		const spans: ErrorSpanRow[] = errors.map((error) => {
+			const rawId = sanitizeString(
 				error.anonymousId,
 				VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
-			),
-			session_id: validateSessionId(error.sessionId),
-			timestamp: typeof error.timestamp === "number" ? error.timestamp : now,
-			path: sanitizeString(error.path, VALIDATION_LIMITS.STRING_MAX_LENGTH),
-			message: sanitizeString(
-				error.message,
-				VALIDATION_LIMITS.STRING_MAX_LENGTH
-			),
-			filename: sanitizeString(
-				error.filename,
-				VALIDATION_LIMITS.STRING_MAX_LENGTH
-			),
-			lineno: error.lineno ?? undefined,
-			colno: error.colno ?? undefined,
-			stack: sanitizeString(error.stack, VALIDATION_LIMITS.STRING_MAX_LENGTH),
-			error_type:
-				sanitizeString(
-					error.errorType,
-					VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
-				) || "Error",
-		}));
+			);
+			return {
+				client_id: clientId,
+				anonymous_id: rawId ? saltAnonymousId(rawId, salt) : rawId,
+				session_id: validateSessionId(error.sessionId),
+				timestamp: typeof error.timestamp === "number" ? error.timestamp : now,
+				path: sanitizeString(error.path, VALIDATION_LIMITS.STRING_MAX_LENGTH),
+				message: sanitizeString(
+					error.message,
+					VALIDATION_LIMITS.STRING_MAX_LENGTH
+				),
+				filename: sanitizeString(
+					error.filename,
+					VALIDATION_LIMITS.STRING_MAX_LENGTH
+				),
+				lineno: error.lineno ?? undefined,
+				colno: error.colno ?? undefined,
+				stack: sanitizeString(error.stack, VALIDATION_LIMITS.STRING_MAX_LENGTH),
+				error_type:
+					sanitizeString(
+						error.errorType,
+						VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
+					) || "Error",
+			};
+		});
 
 		try {
 			await sendEventBatch("analytics-error-spans", spans);
@@ -372,19 +383,23 @@ export function insertIndividualVitals(
 			client_id: clientId,
 		});
 
+		const salt = await getDailySalt();
 		const now = Date.now();
-		const spans: WebVitalsSpan[] = vitals.map((vital) => ({
-			client_id: clientId,
-			anonymous_id: sanitizeString(
+		const spans: WebVitalsSpan[] = vitals.map((vital) => {
+			const rawId = sanitizeString(
 				vital.anonymousId,
 				VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
-			),
-			session_id: validateSessionId(vital.sessionId),
-			timestamp: typeof vital.timestamp === "number" ? vital.timestamp : now,
-			path: sanitizeString(vital.path, VALIDATION_LIMITS.STRING_MAX_LENGTH),
-			metric_name: vital.metricName,
-			metric_value: vital.metricValue,
-		}));
+			);
+			return {
+				client_id: clientId,
+				anonymous_id: rawId ? saltAnonymousId(rawId, salt) : rawId,
+				session_id: validateSessionId(vital.sessionId),
+				timestamp: typeof vital.timestamp === "number" ? vital.timestamp : now,
+				path: sanitizeString(vital.path, VALIDATION_LIMITS.STRING_MAX_LENGTH),
+				metric_name: vital.metricName,
+				metric_value: vital.metricValue,
+			};
+		});
 
 		try {
 			await sendEventBatch("analytics-vitals-spans", spans);
@@ -525,40 +540,46 @@ export function insertCustomEvents(
 			batch_size: events.length,
 		});
 
-		const spans = events.map((event) => ({
-			owner_id: event.owner_id,
-			website_id: event.website_id,
-			timestamp: event.timestamp,
-			event_name: sanitizeString(
-				event.event_name,
-				VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
-			),
-			namespace: event.namespace
-				? sanitizeString(
-						event.namespace,
-						VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
-					)
-				: undefined,
-			path: event.path
-				? sanitizeString(event.path, VALIDATION_LIMITS.STRING_MAX_LENGTH)
-				: undefined,
-			properties: event.properties ? JSON.stringify(event.properties) : "{}",
-			anonymous_id: event.anonymous_id
+		const salt = await getDailySalt();
+
+		const spans = events.map((event) => {
+			const rawId = event.anonymous_id
 				? sanitizeString(
 						event.anonymous_id,
 						VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
 					)
-				: undefined,
-			session_id: event.session_id
-				? validateSessionId(event.session_id)
-				: undefined,
-			source: event.source
-				? sanitizeString(
-						event.source,
-						VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
-					)
-				: undefined,
-		}));
+				: undefined;
+
+			return {
+				owner_id: event.owner_id,
+				website_id: event.website_id,
+				timestamp: event.timestamp,
+				event_name: sanitizeString(
+					event.event_name,
+					VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
+				),
+				namespace: event.namespace
+					? sanitizeString(
+							event.namespace,
+							VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
+						)
+					: undefined,
+				path: event.path
+					? sanitizeString(event.path, VALIDATION_LIMITS.STRING_MAX_LENGTH)
+					: undefined,
+				properties: event.properties ? JSON.stringify(event.properties) : "{}",
+				anonymous_id: rawId ? saltAnonymousId(rawId, salt) : undefined,
+				session_id: event.session_id
+					? validateSessionId(event.session_id)
+					: undefined,
+				source: event.source
+					? sanitizeString(
+							event.source,
+							VALIDATION_LIMITS.SHORT_STRING_MAX_LENGTH
+						)
+					: undefined,
+			};
+		});
 
 		try {
 			await sendEventBatch("analytics-custom-events", spans);

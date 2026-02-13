@@ -27,6 +27,7 @@ interface EventSource {
 	table: string;
 	dateColumn: string;
 	category: EventCategory;
+	filterColumn?: string;
 }
 
 const EVENT_SOURCES: EventSource[] = [
@@ -46,9 +47,10 @@ const EVENT_SOURCES: EventSource[] = [
 		category: EVENT_CATEGORIES.WEB_VITALS,
 	},
 	{
-		table: "analytics.custom_event_spans",
+		table: "analytics.custom_events",
 		dateColumn: "timestamp",
 		category: EVENT_CATEGORIES.CUSTOM_EVENT,
+		filterColumn: "website_id",
 	},
 	{
 		table: "analytics.outgoing_links",
@@ -65,14 +67,17 @@ const getDefaultDateRange = () => {
 	return { startDate, endDate };
 };
 
-const buildEventSourceQuery = (source: EventSource): string => `
+const buildEventSourceQuery = (source: EventSource): string => {
+	const filterCol = source.filterColumn ?? "client_id";
+	return `
 		SELECT 
 			toDate(${source.dateColumn}) as date,
 			'${source.category}' as event_category
 		FROM ${source.table}
-		WHERE client_id IN {websiteIds:Array(String)}
+		WHERE ${filterCol} IN {websiteIds:Array(String)}
 			AND ${source.dateColumn} >= parseDateTimeBestEffort({startDate:String})
 			AND ${source.dateColumn} <= parseDateTimeBestEffort({endDate:String})`;
+};
 
 const getDailyUsageByTypeQuery = (): string => {
 	const eventQueries = EVENT_SOURCES.map(buildEventSourceQuery).join(

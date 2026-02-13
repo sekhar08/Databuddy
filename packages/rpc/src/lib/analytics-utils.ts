@@ -271,7 +271,7 @@ const buildStepQuery = (
 			GROUP BY vid`;
 	}
 
-	// EVENT: query both tables
+	// EVENT: query both analytics.events (track) and analytics.custom_events (api/server)
 	const refJoin = includeReferrer
 		? `LEFT JOIN (
 			SELECT anonymous_id as vid, argMin(referrer, time) as vref
@@ -285,10 +285,11 @@ const buildStepQuery = (
 			SELECT anonymous_id as vid, time as ts FROM analytics.events
 			WHERE ${base} AND event_name = {t${idx}:String}${filterSQL}
 			UNION ALL
-			SELECT anonymous_id as vid, timestamp as ts FROM analytics.custom_event_spans
-			WHERE client_id = {websiteId:String}
+			SELECT COALESCE(anonymous_id, session_id, '') as vid, timestamp as ts FROM analytics.custom_events
+			WHERE website_id = {websiteId:String}
 				AND ${buildTimeRangeWhere("timestamp")}
 				AND event_name = {t${idx}:String}
+				AND coalesce(anonymous_id, session_id, '') != ''
 		) e ${refJoin}
 		GROUP BY e.vid${includeReferrer ? ", r.vref" : ""}`;
 };
@@ -385,11 +386,18 @@ const queryFunnelErrors = async (
 			   AND time <= parseDateTimeBestEffort({endDate:String})
 			   AND event_name = 'screen_view'
 			   AND path = {firstStepTarget:String}`
-			: `SELECT DISTINCT anonymous_id FROM analytics.events
+			: `(SELECT DISTINCT anonymous_id FROM analytics.events
 			   WHERE client_id = {websiteId:String}
 			   AND time >= parseDateTimeBestEffort({startDate:String})
 			   AND time <= parseDateTimeBestEffort({endDate:String})
-			   AND event_name = {firstStepTarget:String}`;
+			   AND event_name = {firstStepTarget:String}
+			   UNION
+			   SELECT DISTINCT anonymous_id FROM analytics.custom_events
+			   WHERE website_id = {websiteId:String}
+			   AND timestamp >= parseDateTimeBestEffort({startDate:String})
+			   AND timestamp <= parseDateTimeBestEffort({endDate:String})
+			   AND event_name = {firstStepTarget:String}
+			   AND anonymous_id IS NOT NULL AND anonymous_id != '')`;
 
 	const errorRows = await chQuery<ErrorRow>(
 		`SELECT 
