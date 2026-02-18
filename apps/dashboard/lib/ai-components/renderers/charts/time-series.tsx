@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+import { useId } from "react";
 import {
 	Area,
 	AreaChart,
@@ -12,7 +14,6 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
-import { useId } from "react";
 import { Card } from "@/components/ui/card";
 import type { ChartComponentProps } from "../../types";
 
@@ -82,129 +83,71 @@ export function TimeSeriesRenderer({
 		strokeDasharray: "4 4",
 	};
 
-	const renderChart = () => {
-		const chartProps = {
-			data,
-			margin: { top: 5, right: 5, left: 5, bottom: 5 },
-		};
+	const chartProps = {
+		data,
+		margin: { top: 5, right: 5, left: 5, bottom: 5 },
+	};
 
-		if (variant === "bar") {
-			return (
-				<BarChart {...chartProps}>
-					<defs>
+	return (
+		<Card className={className ?? "gap-0 overflow-hidden border bg-card p-0"}>
+			<div className="dotted-bg bg-accent p-3">
+				<ResponsiveContainer height={180} width="100%">
+					<TimeSeriesChartContent
+						chartProps={chartProps}
+						cursorStyle={cursorStyle}
+						getColor={getColor}
+						id={id}
+						series={series}
+						tooltipContent={tooltipContent}
+						variant={variant}
+					/>
+				</ResponsiveContainer>
+			</div>
+			{title && (
+				<div className="flex items-center gap-2.5 border-t px-3 py-2.5">
+					<p className="min-w-0 flex-1 truncate font-semibold text-sm">
+						{title}
+					</p>
+					<div className="flex shrink-0 flex-wrap gap-1.5">
 						{series.map((key, idx) => (
-							<linearGradient
-								id={`${id}-gradient-${key}`}
+							<div
+								className="flex items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5"
 								key={key}
-								x1="0"
-								x2="0"
-								y1="0"
-								y2="1"
 							>
-								<stop offset="5%" stopColor={getColor(idx)} stopOpacity={0.8} />
-								<stop
-									offset="95%"
-									stopColor={getColor(idx)}
-									stopOpacity={0.1}
+								<div
+									className="size-2 rounded"
+									style={{ backgroundColor: getColor(idx) }}
 								/>
-							</linearGradient>
+								<span className="text-[10px] text-muted-foreground">{key}</span>
+							</div>
 						))}
-					</defs>
-					<XAxis
-						axisLine={false}
-						dataKey="x"
-						tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-						tickLine={false}
-					/>
-					<YAxis
-						axisLine={false}
-						tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-						tickLine={false}
-						width={35}
-					/>
-					<Tooltip
-						content={tooltipContent}
-						cursor={{ fill: "var(--chart-1)", fillOpacity: 0.1 }}
-					/>
-					{series.map((key) => (
-						<Bar
-							dataKey={key}
-							fill={`url(#${id}-gradient-${key})`}
-							key={key}
-							radius={[2, 2, 0, 0]}
-						/>
-					))}
-				</BarChart>
-			);
-		}
+					</div>
+				</div>
+			)}
+		</Card>
+	);
+}
 
-		if (variant === "stacked-bar") {
-			return (
-				<BarChart {...chartProps}>
-					<XAxis
-						axisLine={false}
-						dataKey="x"
-						tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-						tickLine={false}
-					/>
-					<YAxis
-						axisLine={false}
-						tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-						tickLine={false}
-						width={35}
-					/>
-					<Tooltip
-						content={tooltipContent}
-						cursor={{ fill: "var(--chart-1)", fillOpacity: 0.1 }}
-					/>
-					{series.map((key, idx) => (
-						<Bar
-							dataKey={key}
-							fill={getColor(idx)}
-							key={key}
-							radius={idx === series.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}
-							stackId="stack"
-						/>
-					))}
-				</BarChart>
-			);
-		}
-
-		if (variant === "line") {
-			return (
-				<LineChart {...chartProps}>
-					<XAxis
-						axisLine={false}
-						dataKey="x"
-						tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-						tickLine={false}
-					/>
-					<YAxis
-						axisLine={false}
-						tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-						tickLine={false}
-						width={35}
-					/>
-					<Tooltip content={tooltipContent} cursor={cursorStyle} />
-					{series.map((key, idx) => (
-						<Line
-							activeDot={{ r: 3 }}
-							dataKey={key}
-							dot={false}
-							key={key}
-							stroke={getColor(idx)}
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2.5}
-							type="monotone"
-						/>
-					))}
-				</LineChart>
-			);
-		}
-
+function TimeSeriesChartContent({
+	chartProps,
+	cursorStyle,
+	getColor,
+	id,
+	series,
+	tooltipContent,
+	variant,
+}: {
+	chartProps: { data: Record<string, string | number>[]; margin: object };
+	cursorStyle: object;
+	getColor: (idx: number) => string;
+	id: string;
+	series: string[];
+	tooltipContent: (props: object) => ReactNode;
+	variant: "line" | "bar" | "area" | "stacked-bar";
+}) {
+	if (variant === "bar") {
 		return (
-			<AreaChart {...chartProps}>
+			<BarChart {...chartProps}>
 				<defs>
 					{series.map((key, idx) => (
 						<linearGradient
@@ -232,13 +175,75 @@ export function TimeSeriesRenderer({
 					tickLine={false}
 					width={35}
 				/>
+				<Tooltip
+					content={tooltipContent}
+					cursor={{ fill: "var(--chart-1)", fillOpacity: 0.1 }}
+				/>
+				{series.map((key) => (
+					<Bar
+						dataKey={key}
+						fill={`url(#${id}-gradient-${key})`}
+						key={key}
+						radius={[2, 2, 0, 0]}
+					/>
+				))}
+			</BarChart>
+		);
+	}
+
+	if (variant === "stacked-bar") {
+		return (
+			<BarChart {...chartProps}>
+				<XAxis
+					axisLine={false}
+					dataKey="x"
+					tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+					tickLine={false}
+				/>
+				<YAxis
+					axisLine={false}
+					tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+					tickLine={false}
+					width={35}
+				/>
+				<Tooltip
+					content={tooltipContent}
+					cursor={{ fill: "var(--chart-1)", fillOpacity: 0.1 }}
+				/>
+				{series.map((key, idx) => (
+					<Bar
+						dataKey={key}
+						fill={getColor(idx)}
+						key={key}
+						radius={idx === series.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}
+						stackId="stack"
+					/>
+				))}
+			</BarChart>
+		);
+	}
+
+	if (variant === "line") {
+		return (
+			<LineChart {...chartProps}>
+				<XAxis
+					axisLine={false}
+					dataKey="x"
+					tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+					tickLine={false}
+				/>
+				<YAxis
+					axisLine={false}
+					tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+					tickLine={false}
+					width={35}
+				/>
 				<Tooltip content={tooltipContent} cursor={cursorStyle} />
 				{series.map((key, idx) => (
-					<Area
+					<Line
 						activeDot={{ r: 3 }}
 						dataKey={key}
 						dot={false}
-						fill={`url(#${id}-gradient-${key})`}
 						key={key}
 						stroke={getColor(idx)}
 						strokeLinecap="round"
@@ -247,38 +252,54 @@ export function TimeSeriesRenderer({
 						type="monotone"
 					/>
 				))}
-			</AreaChart>
+			</LineChart>
 		);
-	};
+	}
 
 	return (
-		<Card className={className ?? "gap-0 overflow-hidden border bg-card p-0"}>
-			<div className="dotted-bg bg-accent p-3">
-				<ResponsiveContainer height={180} width="100%">
-					{renderChart()}
-				</ResponsiveContainer>
-			</div>
-			{title && (
-				<div className="flex items-center gap-2.5 border-t px-3 py-2.5">
-					<p className="min-w-0 flex-1 truncate font-semibold text-sm">
-						{title}
-					</p>
-					<div className="flex shrink-0 flex-wrap gap-1.5">
-						{series.map((key, idx) => (
-							<div
-								className="flex items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5"
-								key={key}
-							>
-								<div
-									className="size-2 rounded"
-									style={{ backgroundColor: getColor(idx) }}
-								/>
-								<span className="text-[10px] text-muted-foreground">{key}</span>
-							</div>
-						))}
-					</div>
-				</div>
-			)}
-		</Card>
+		<AreaChart {...chartProps}>
+			<defs>
+				{series.map((key, idx) => (
+					<linearGradient
+						id={`${id}-gradient-${key}`}
+						key={key}
+						x1="0"
+						x2="0"
+						y1="0"
+						y2="1"
+					>
+						<stop offset="5%" stopColor={getColor(idx)} stopOpacity={0.8} />
+						<stop offset="95%" stopColor={getColor(idx)} stopOpacity={0.1} />
+					</linearGradient>
+				))}
+			</defs>
+			<XAxis
+				axisLine={false}
+				dataKey="x"
+				tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+				tickLine={false}
+			/>
+			<YAxis
+				axisLine={false}
+				tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+				tickLine={false}
+				width={35}
+			/>
+			<Tooltip content={tooltipContent} cursor={cursorStyle} />
+			{series.map((key, idx) => (
+				<Area
+					activeDot={{ r: 3 }}
+					dataKey={key}
+					dot={false}
+					fill={`url(#${id}-gradient-${key})`}
+					key={key}
+					stroke={getColor(idx)}
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					strokeWidth={2.5}
+					type="monotone"
+				/>
+			))}
+		</AreaChart>
 	);
 }

@@ -93,25 +93,8 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
 			]);
 		} catch {
 			toast.error("Failed to refresh data");
-		} finally {
-			setIsRefreshing(false);
 		}
-	};
-
-	const renderContent = () => {
-		if (hideToolbar) {
-			return children;
-		}
-
-		if (showTrackingSetup) {
-			return (
-				<div className="p-4">
-					<WebsiteTrackingSetupTab websiteId={websiteId} />
-				</div>
-			);
-		}
-
-		return children;
+		setIsRefreshing(false);
 	};
 
 	return (
@@ -129,7 +112,15 @@ export default function WebsiteLayout({ children }: WebsiteLayoutProps) {
 			)}
 
 			<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-				{renderContent()}
+				{hideToolbar ? (
+					children
+				) : showTrackingSetup ? (
+					<div className="p-4">
+						<WebsiteTrackingSetupTab websiteId={websiteId} />
+					</div>
+				) : (
+					children
+				)}
 			</div>
 		</div>
 	);

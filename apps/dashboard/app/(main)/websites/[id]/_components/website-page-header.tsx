@@ -28,6 +28,42 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
+function WebsitePageHeaderSubtitle({
+	description,
+	isLoading,
+	subtitle,
+}: {
+	description?: string;
+	isLoading?: boolean;
+	subtitle?: string | ReactNode;
+}) {
+	const showSubtitleSkeleton = isLoading && !description;
+	if (showSubtitleSkeleton) {
+		return (
+			<div className="h-5 sm:h-6">
+				<Skeleton className="h-4 w-48" />
+			</div>
+		);
+	}
+	if (subtitle) {
+		return typeof subtitle === "string" ? (
+			<p className="h-5 truncate text-muted-foreground text-sm sm:h-6 sm:text-base">
+				{subtitle}
+			</p>
+		) : (
+			<div className="h-5 sm:h-6">{subtitle}</div>
+		);
+	}
+	if (description) {
+		return (
+			<p className="h-5 truncate text-muted-foreground text-sm sm:h-6 sm:text-base">
+				{description}
+			</p>
+		);
+	}
+	return null;
+}
+
 interface WebsitePageHeaderProps {
 	title: string;
 	description?: string;
@@ -176,37 +212,6 @@ export function WebsitePageHeader({
 			</Tooltip>
 		</TooltipProvider>
 	) : null;
-	const renderSubtitle = () => {
-		const showSubtitleSkeleton = isLoading && !description;
-
-		if (showSubtitleSkeleton) {
-			return (
-				<div className="h-5 sm:h-6">
-					<Skeleton className="h-4 w-48" />
-				</div>
-			);
-		}
-
-		if (subtitle) {
-			return typeof subtitle === "string" ? (
-				<p className="h-5 truncate text-muted-foreground text-sm sm:h-6 sm:text-base">
-					{subtitle}
-				</p>
-			) : (
-				<div className="h-5 sm:h-6">{subtitle}</div>
-			);
-		}
-
-		if (description) {
-			return (
-				<p className="h-5 truncate text-muted-foreground text-sm sm:h-6 sm:text-base">
-					{description}
-				</p>
-			);
-		}
-
-		return null;
-	};
 
 	if (variant === "minimal") {
 		return (
@@ -229,7 +234,11 @@ export function WebsitePageHeader({
 					<div className="flex-1">
 						<h1 className="font-semibold text-xl">{title}</h1>
 						{usageBadge}
-						{renderSubtitle()}
+						<WebsitePageHeaderSubtitle
+							description={description}
+							isLoading={isLoading}
+							subtitle={subtitle}
+						/>
 					</div>
 				</div>
 
@@ -299,7 +308,11 @@ export function WebsitePageHeader({
 								</h1>
 								{usageBadge}
 							</div>
-							{renderSubtitle()}
+							<WebsitePageHeaderSubtitle
+								description={description}
+								isLoading={isLoading}
+								subtitle={subtitle}
+							/>
 						</div>
 					</div>
 				</div>

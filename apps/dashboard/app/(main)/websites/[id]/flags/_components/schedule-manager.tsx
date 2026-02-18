@@ -272,7 +272,7 @@ export function ScheduleManager({ form, flagId }: ScheduleManagerProps) {
 								className="grid grid-cols-[1fr_auto_auto] items-center gap-2"
 								exit={{ opacity: 0, y: -10 }}
 								initial={{ opacity: 0, y: 10 }}
-								key={index}
+								key={`${step.scheduledAt ?? ""}-${step.value}-${index}`}
 								layout
 							>
 								<DateTimePicker

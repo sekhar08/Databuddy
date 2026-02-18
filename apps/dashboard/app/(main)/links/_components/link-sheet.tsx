@@ -14,7 +14,7 @@ import {
 	QrCodeIcon,
 } from "@phosphor-icons/react";
 import dayjs from "dayjs";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { type SubmitHandler, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -214,12 +214,7 @@ interface LinkSheetProps {
 	onSave?: (link: Link) => void;
 }
 
-export function LinkSheet({
-	open,
-	onOpenChange,
-	link,
-	onSave,
-}: LinkSheetProps) {
+function LinkSheetInner({ open, onOpenChange, link, onSave }: LinkSheetProps) {
 	const isEditing = !!link;
 	const { activeOrganization } = useOrganizationsContext();
 
@@ -322,20 +317,14 @@ export function LinkSheet({
 		[form]
 	);
 
-	const prevOpenRef = useRef(open);
-	const prevLinkRef = useRef(link);
-
-	if (open && (!prevOpenRef.current || prevLinkRef.current !== link)) {
-		resetForm(link);
-	}
-	prevOpenRef.current = open;
-	prevLinkRef.current = link;
-
 	const handleOpenChange = useCallback(
 		(isOpen: boolean) => {
+			if (isOpen) {
+				resetForm(link);
+			}
 			onOpenChange(isOpen);
 		},
-		[onOpenChange]
+		[onOpenChange, resetForm, link]
 	);
 
 	const slugValue = form.watch("slug");
@@ -985,5 +974,14 @@ export function LinkSheet({
 				</Form>
 			</SheetContent>
 		</Sheet>
+	);
+}
+
+export function LinkSheet(props: LinkSheetProps) {
+	return (
+		<LinkSheetInner
+			key={props.open ? (props.link?.id ?? "new") : "closed"}
+			{...props}
+		/>
 	);
 }

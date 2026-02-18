@@ -251,9 +251,10 @@ function DowngradeConfirmDialog({
 		setIsConfirming(true);
 		try {
 			await onConfirm();
-		} finally {
-			setIsConfirming(false);
+		} catch {
+			// Error handled by onConfirm
 		}
+		setIsConfirming(false);
 	};
 
 	return (
@@ -347,9 +348,10 @@ function PricingCard({
 		setIsAttaching(true);
 		try {
 			await attachAction?.();
-		} finally {
-			setIsAttaching(false);
+		} catch {
+			// Error handled by attachAction
 		}
+		setIsAttaching(false);
 	};
 
 	const mainPrice = product.properties?.is_free
@@ -514,9 +516,10 @@ function PricingCard({
 							metadata: getStripeMetadata(),
 							...(product.id === "hobby" && { reward: "SAVE80" }),
 						});
-					} finally {
-						setIsAttaching(false);
+					} catch {
+						// Error handled by attach
 					}
+					setIsAttaching(false);
 				}}
 				productName={productDisplay?.name || name}
 			/>

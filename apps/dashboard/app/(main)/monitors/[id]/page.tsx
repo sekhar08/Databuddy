@@ -194,9 +194,8 @@ export default function MonitorDetailsPage() {
 			const errorMessage =
 				error instanceof Error ? error.message : "Failed to update monitor";
 			toast.error(errorMessage);
-		} finally {
-			setIsPausing(false);
 		}
+		setIsPausing(false);
 	};
 
 	const handleMonitorSaved = async () => {
@@ -229,9 +228,10 @@ export default function MonitorDetailsPage() {
 				refetchUptimeData(),
 				refetchHeatmapData(),
 			]);
-		} finally {
-			setIsRefreshing(false);
+		} catch {
+			// Error handled by individual refetch handlers
 		}
+		setIsRefreshing(false);
 	};
 
 	if (isLoadingSchedule) {

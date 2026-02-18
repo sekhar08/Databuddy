@@ -1,7 +1,7 @@
 import { ChartLineIcon, XIcon } from "@phosphor-icons/react";
 import dayjs from "dayjs";
 import { useAtom } from "jotai";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import {
 	Area,
 	CartesianGrid,
@@ -338,9 +338,9 @@ export function MetricsChart({
 	const [selectedDateRange, setSelectedDateRange] =
 		useState<DateRangeState | null>(null);
 
-	const isDraggingRef = useRef(false);
+	const [isDragging, setIsDragging] = useState(false);
 	const [suppressTooltip, setSuppressTooltip] = useState(false);
-	const hasAnimatedRef = useRef(false);
+	const [hasAnimated, setHasAnimated] = useState(false);
 
 	const { chartStepType } = useChartPreferences("overview-main");
 
@@ -379,7 +379,7 @@ export function MetricsChart({
 		if (!e?.activeLabel) {
 			return;
 		}
-		isDraggingRef.current = true;
+		setIsDragging(true);
 		setSuppressTooltip(true);
 		setRefAreaLeft(e.activeLabel);
 		setRefAreaRight(null);
@@ -393,12 +393,12 @@ export function MetricsChart({
 	};
 
 	const handleMouseUp = (e: { activeLabel?: string }) => {
-		const wasDragging = isDraggingRef.current;
-		isDraggingRef.current = false;
-
-		if (wasDragging) {
-			setTimeout(() => setSuppressTooltip(false), 150);
-		}
+		setIsDragging((wasDragging) => {
+			if (wasDragging) {
+				setTimeout(() => setSuppressTooltip(false), 150);
+			}
+			return false;
+		});
 
 		if (!(e?.activeLabel && refAreaLeft)) {
 			setRefAreaLeft(null);
@@ -610,7 +610,7 @@ export function MetricsChart({
 							<Tooltip
 								content={
 									<CustomTooltip
-										isDragging={isDraggingRef.current}
+										isDragging={isDragging}
 										justFinishedDragging={suppressTooltip}
 									/>
 								}
@@ -807,11 +807,11 @@ export function MetricsChart({
 									dataKey={metric.key}
 									fill={`url(#gradient-${metric.gradient})`}
 									hide={hiddenMetrics[metric.key]}
-									isAnimationActive={!hasAnimatedRef.current}
+									isAnimationActive={!hasAnimated}
 									key={metric.key}
 									name={metric.label}
 									onAnimationEnd={() => {
-										hasAnimatedRef.current = true;
+										setHasAnimated(true);
 									}}
 									stroke={metric.color}
 									strokeDasharray={

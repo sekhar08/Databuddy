@@ -92,9 +92,10 @@ export default function FlagsLayout({
 			} else if (!isTemplatesPage) {
 				await refetchFlags();
 			}
-		} finally {
-			setIsRefreshing(false);
+		} catch {
+			// Error handled by refetch
 		}
+		setIsRefreshing(false);
 	}, [
 		isTemplatesPage,
 		isGroupsPage,

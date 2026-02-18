@@ -130,7 +130,7 @@ export function LLMTimeSeriesChart({
 	const [hiddenMetrics, setHiddenMetrics] = useState<Record<string, boolean>>(
 		{}
 	);
-	const hasAnimatedRef = useRef(false);
+	const [hasAnimated, setHasAnimated] = useState(false);
 
 	const toggleMetric = useCallback((key: string) => {
 		setHiddenMetrics((prev) => ({
@@ -320,11 +320,11 @@ export function LLMTimeSeriesChart({
 											dataKey={metric.key}
 											fill={`url(#gradient-${metric.gradient})`}
 											hide={hiddenMetrics[metric.key]}
-											isAnimationActive={!hasAnimatedRef.current}
+											isAnimationActive={!hasAnimated}
 											key={metric.key}
 											name={metric.label}
 											onAnimationEnd={() => {
-												hasAnimatedRef.current = true;
+												setHasAnimated(true);
 											}}
 											stroke={metric.color}
 											strokeWidth={2.5}

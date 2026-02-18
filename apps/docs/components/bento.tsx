@@ -449,7 +449,7 @@ const ErrorTrackingFeature = () => (
 						animate={{ height: `${h}%` }}
 						className="flex-1 rounded-t-[1px] bg-accent-foreground duration-300 hover:bg-accent-foreground/50"
 						initial={{ height: 0 }}
-						key={i}
+						key={`bar-${h}-${i}`}
 						transition={{ duration: 0.5, delay: i * 0.05 }}
 					/>
 				))}
@@ -473,10 +473,10 @@ const FeatureFlagsFeature = () => {
 				maskImage: "linear-gradient(to bottom, black 70%, transparent 100%)",
 			}}
 		>
-			{flags.map((flag, i) => (
+			{flags.map((flag) => (
 				<div
 					className="group flex items-center justify-between border border-border/50 bg-secondary/20 p-3 transition-all"
-					key={i}
+					key={flag.name}
 				>
 					<div className="flex min-w-0 flex-1 items-center gap-3">
 						<div

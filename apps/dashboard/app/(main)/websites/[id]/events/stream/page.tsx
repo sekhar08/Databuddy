@@ -225,13 +225,13 @@ export default function EventsStreamPage() {
 		[dateRange, filters]
 	);
 
-	const prevEventsKeyRef = useRef(eventsKey);
-	if (prevEventsKeyRef.current !== eventsKey) {
-		prevEventsKeyRef.current = eventsKey;
+	const justResetRef = useRef(false);
+	useEffect(() => {
 		setPage(1);
 		setAllEvents([]);
 		setIsInitialLoad(true);
-	}
+		justResetRef.current = true;
+	}, [eventsKey]);
 
 	// Handle intersection for infinite scroll
 	const handleIntersection = useCallback(
@@ -245,7 +245,13 @@ export default function EventsStreamPage() {
 	);
 
 	const observerRef = useRef<IntersectionObserver | null>(null);
-	if (loadMoreRef && scrollContainerRef) {
+	useEffect(() => {
+		if (!loadMoreRef) {
+			return;
+		}
+		if (!scrollContainerRef) {
+			return;
+		}
 		if (observerRef.current) {
 			observerRef.current.disconnect();
 		}
@@ -255,31 +261,40 @@ export default function EventsStreamPage() {
 			rootMargin: "300px",
 		});
 		observerRef.current.observe(loadMoreRef);
-	}
+		return () => {
+			observerRef.current?.disconnect();
+			observerRef.current = null;
+		};
+	}, [loadMoreRef, scrollContainerRef, handleIntersection]);
 
 	// Accumulate events as they load
-	const prevEventsRef = useRef<RecentCustomEvent[]>([]);
-	if (events?.length && events !== prevEventsRef.current) {
-		prevEventsRef.current = events;
-		const existingKeys = new Set(
-			allEvents.map((e) => `${e.timestamp}-${e.event_name}-${e.session_id}`)
-		);
-		let hasNewEvents = false;
-
-		const newEvents = [...allEvents];
-		for (const event of events) {
-			const key = `${event.timestamp}-${event.event_name}-${event.session_id}`;
-			if (!existingKeys.has(key)) {
-				newEvents.push(event);
-				hasNewEvents = true;
+	useEffect(() => {
+		if (!events?.length) {
+			return;
+		}
+		if (justResetRef.current) {
+			justResetRef.current = false;
+			setAllEvents(events);
+			setIsInitialLoad(false);
+			return;
+		}
+		setAllEvents((prev) => {
+			const existingKeys = new Set(
+				prev.map((e) => `${e.timestamp}-${e.event_name}-${e.session_id}`)
+			);
+			let hasNewEvents = false;
+			const newEvents = [...prev];
+			for (const event of events) {
+				const key = `${event.timestamp}-${event.event_name}-${event.session_id}`;
+				if (!existingKeys.has(key)) {
+					newEvents.push(event);
+					hasNewEvents = true;
+				}
 			}
-		}
-
-		if (hasNewEvents) {
-			setAllEvents(newEvents);
-		}
+			return hasNewEvents ? newEvents : prev;
+		});
 		setIsInitialLoad(false);
-	}
+	}, [events]);
 
 	// Extract unique values for filter dropdowns
 	const eventTypes = useMemo(() => {
@@ -667,7 +682,7 @@ export default function EventsStreamPage() {
 						</TableHeader>
 						<TableBody>
 							{Array.from({ length: 10 }).map((_, i) => (
-								<SkeletonRow key={`skeleton-${i}`} />
+								<SkeletonRow key={`skeleton-row-${i}`} />
 							))}
 						</TableBody>
 					</Table>

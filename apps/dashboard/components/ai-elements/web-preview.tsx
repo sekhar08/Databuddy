@@ -2,7 +2,7 @@
 
 import { ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Collapsible,
@@ -47,13 +47,17 @@ export const WebPreview = ({
 	onUrlChange,
 	...props
 }: WebPreviewProps) => {
-	const [url, setUrl] = useState(defaultUrl);
+	const [urlOverride, setUrlOverride] = useState<string | null>(null);
+	const url = urlOverride ?? defaultUrl;
 	const [consoleOpen, setConsoleOpen] = useState(false);
 
-	const handleUrlChange = (newUrl: string) => {
-		setUrl(newUrl);
-		onUrlChange?.(newUrl);
-	};
+	const handleUrlChange = useCallback(
+		(newUrl: string) => {
+			setUrlOverride(newUrl === defaultUrl ? null : newUrl);
+			onUrlChange?.(newUrl);
+		},
+		[defaultUrl, onUrlChange]
+	);
 
 	const contextValue: WebPreviewContextValue = {
 		url,
@@ -192,11 +196,11 @@ export const WebPreviewBody = ({
 	);
 };
 
-type ConsoleLog = {
+interface ConsoleLog {
 	level: "log" | "warn" | "error";
 	message: string;
 	timestamp: Date;
-};
+}
 
 export type WebPreviewConsoleProps = ComponentProps<"div"> & {
 	logs?: ConsoleLog[];

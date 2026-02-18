@@ -4,6 +4,7 @@ import { getTrackingParams } from "@databuddy/sdk";
 import { ArrowRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { cn } from "@/lib/utils";
 import { LiquidChrome } from "../bits/liquid";
 
@@ -23,7 +24,7 @@ const ctaItems = [
 	},
 ];
 
-export default function CTA() {
+function CTAContent() {
 	const searchParams = useSearchParams();
 	const trackingParams = getTrackingParams(searchParams);
 
@@ -154,5 +155,15 @@ export default function CTA() {
 				</div>
 			</div>
 		</div>
+	);
+}
+
+export default function CTA() {
+	return (
+		<Suspense
+			fallback={<div className="h-[400px] animate-pulse rounded bg-muted/30" />}
+		>
+			<CTAContent />
+		</Suspense>
 	);
 }

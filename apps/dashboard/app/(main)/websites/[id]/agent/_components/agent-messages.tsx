@@ -2,7 +2,7 @@
 
 import { BrainIcon } from "@phosphor-icons/react";
 import type { UIMessage } from "ai";
-import { useRef } from "react";
+import { useEffect, useState } from "react";
 import { AIComponent } from "@/components/ai-elements/ai-component";
 import {
 	ChainOfThought,
@@ -75,14 +75,16 @@ function ReasoningMessage({
 	part: MessagePart;
 	isStreaming: boolean;
 }) {
-	const hasBeenStreamingRef = useRef(isStreaming);
-	if (isStreaming) {
-		hasBeenStreamingRef.current = true;
-	}
+	const [hasBeenStreaming, setHasBeenStreaming] = useState(false);
+	useEffect(() => {
+		if (isStreaming) {
+			setHasBeenStreaming(true);
+		}
+	}, [isStreaming]);
 
 	return (
 		<Reasoning
-			defaultOpen={hasBeenStreamingRef.current}
+			defaultOpen={isStreaming || hasBeenStreaming}
 			isStreaming={isStreaming}
 		>
 			<ReasoningTrigger />
