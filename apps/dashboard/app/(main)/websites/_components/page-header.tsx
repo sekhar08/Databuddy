@@ -35,9 +35,9 @@ export const PageHeader = memo(
 		right,
 		count,
 	}: PageHeaderProps) => (
-		<div className="relative flex h-22 shrink-0 flex-col justify-between gap-0 border-b sm:flex-row sm:items-center lg:gap-3">
-			<div className="flex h-22 items-center gap-3 p-3 sm:p-4">
-				<div className="rounded-lg border bg-secondary p-2.5">
+		<div className="relative flex shrink-0 items-center justify-between gap-2 border-b p-3 sm:p-4">
+			<div className="flex min-w-0 flex-1 items-center gap-3">
+				<div className="shrink-0 rounded-lg border bg-secondary p-2.5">
 					{cloneElement(icon, {
 						...icon.props,
 						className: cn(
@@ -55,7 +55,7 @@ export const PageHeader = memo(
 							{title}
 						</h1>
 						{typeof count === "number" && (
-							<div className="flex items-center gap-2 text-accent-foreground/60 text-sm">
+							<div className="flex shrink-0 items-center gap-2 text-accent-foreground/60 text-sm">
 								{count}
 							</div>
 						)}
@@ -68,12 +68,16 @@ export const PageHeader = memo(
 							</Badge>
 						)}
 					</div>
-					<p className="text-muted-foreground text-xs sm:text-sm">
+					<p className="truncate text-muted-foreground text-xs sm:text-sm">
 						{description}
 					</p>
 				</div>
 			</div>
-			{right && <div className="flex items-center gap-2 p-3">{right}</div>}
+			{right && (
+				<div className="flex shrink-0 flex-nowrap items-center gap-2">
+					{right}
+				</div>
+			)}
 		</div>
 	)
 );
