@@ -208,10 +208,10 @@ export function PlansComparisonTable({ plans }: Props) {
 									className={`px-4 py-3 text-center sm:px-5 lg:px-6 ${p.id === "pro" ? "border-border border-x bg-primary/10" : ""}`}
 									key={`cta-${p.id}`}
 								>
-									<SciFiButton asChild>
-										{p.id === "enterprise" ? (
-											<Link href="mailto:hey@databuddy.cc">CONTACT US</Link>
-										) : (
+								<SciFiButton asChild>
+									{p.id === "enterprise" ? (
+										<Link href="/contact">CONTACT US</Link>
+									) : (
 											<Link
 												href={`https://app.databuddy.cc/register?plan=${p.id}`}
 												rel="noopener noreferrer"

@@ -88,9 +88,10 @@ export function Estimator({
 									<span>{formatCompact(1_000_000)}</span>
 									<span>{formatCompact(10_000_000)}</span>
 									<span>{formatCompact(100_000_000)}</span>
+									<span>{formatCompact(250_000_000)}+</span>
 								</div>
 								<p className="mt-2 text-muted-foreground text-xs">
-									We can scale with you, from 0 to 100M events / month.
+									We can scale with you, from 0 to 250M+ events / month.
 								</p>
 							</div>
 						</div>
@@ -106,58 +107,80 @@ export function Estimator({
 									</span>
 								</div>
 								<p className="text-muted-foreground text-xs">
-									Cheapest option for {formatInteger(monthlyEvents)}{" "}
-									events/month
+									{bestPlanDisplayName === "Enterprise"
+										? "Custom pricing for high-volume usage"
+										: `Cheapest option for ${formatInteger(monthlyEvents)} events/month`}
 								</p>
 							</div>
-							<Separator className="my-3" />
-							<div className="relative h-2 w-full rounded bg-muted">
-								<div
-									className="absolute top-0 left-0 h-full rounded bg-primary"
-									style={{ width: `${includedPortion}%` }}
-								/>
-							</div>
-							<div className="mt-2 flex items-center justify-between text-muted-foreground text-xs">
-								<span>
-									Included: {formatInteger(Math.min(monthlyEvents, included))}
-								</span>
-								<span>Overage: {formatInteger(over)}</span>
-							</div>
-							<Separator className="my-3" />
-							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground text-sm">
-									Plan price
-								</span>
-								<span className="text-sm">
-									{formatMoney(bestPlan ? bestPlan.priceMonthly : 0)}
-								</span>
-							</div>
-							<div className="mt-2 flex items-center justify-between">
-								<span className="text-muted-foreground text-sm">
-									Estimated overage
-								</span>
-								<span className="text-sm">{formatMoney(estimatedOverage)}</span>
-							</div>
-							<Separator className="my-3" />
-							<div className="flex items-center justify-between">
-								<span className="font-semibold text-sm">
-									Estimated total / month
-								</span>
-								<span className="font-semibold text-sm">
-									{formatMoney(estimatedMonthly)}
-								</span>
-							</div>
-							<div className="mt-4 flex justify-end">
-								<SciFiButton asChild>
-									<Link
-										href="https://app.databuddy.cc/login"
-										rel="noopener noreferrer"
-										target="_blank"
-									>
-										GET STARTED
-									</Link>
-								</SciFiButton>
-							</div>
+							{bestPlanDisplayName === "Enterprise" ? (
+								<>
+									<Separator className="my-3" />
+									<p className="text-muted-foreground text-sm">
+										At this volume, we'll put together a custom plan with
+										dedicated support, SLAs, and volume pricing tailored to
+										your needs.
+									</p>
+									<div className="mt-4 flex justify-end">
+										<SciFiButton asChild>
+											<Link href="/contact">CONTACT US</Link>
+										</SciFiButton>
+									</div>
+								</>
+							) : (
+								<>
+									<Separator className="my-3" />
+									<div className="relative h-2 w-full rounded bg-muted">
+										<div
+											className="absolute top-0 left-0 h-full rounded bg-primary"
+											style={{ width: `${includedPortion}%` }}
+										/>
+									</div>
+									<div className="mt-2 flex items-center justify-between text-muted-foreground text-xs">
+										<span>
+											Included:{" "}
+											{formatInteger(Math.min(monthlyEvents, included))}
+										</span>
+										<span>Overage: {formatInteger(over)}</span>
+									</div>
+									<Separator className="my-3" />
+									<div className="flex items-center justify-between">
+										<span className="text-muted-foreground text-sm">
+											Plan price
+										</span>
+										<span className="text-sm">
+											{formatMoney(bestPlan ? bestPlan.priceMonthly : 0)}
+										</span>
+									</div>
+									<div className="mt-2 flex items-center justify-between">
+										<span className="text-muted-foreground text-sm">
+											Estimated overage
+										</span>
+										<span className="text-sm">
+											{formatMoney(estimatedOverage)}
+										</span>
+									</div>
+									<Separator className="my-3" />
+									<div className="flex items-center justify-between">
+										<span className="font-semibold text-sm">
+											Estimated total / month
+										</span>
+										<span className="font-semibold text-sm">
+											{formatMoney(estimatedMonthly)}
+										</span>
+									</div>
+									<div className="mt-4 flex justify-end">
+										<SciFiButton asChild>
+											<Link
+												href="https://app.databuddy.cc/login"
+												rel="noopener noreferrer"
+												target="_blank"
+											>
+												GET STARTED
+											</Link>
+										</SciFiButton>
+									</div>
+								</>
+							)}
 						</div>
 					</div>
 

@@ -18,7 +18,7 @@ export function Footer() {
 					<h2 className="mb-6 font-medium text-2xl leading-tight sm:text-3xl">
 						You're just one click away.
 					</h2>
-					<div>
+					<div className="flex items-center justify-center gap-3">
 						<SciFiButton asChild>
 							<a
 								href="https://app.databuddy.cc/login"
@@ -27,6 +27,9 @@ export function Footer() {
 							>
 								GET STARTED
 							</a>
+						</SciFiButton>
+						<SciFiButton asChild>
+							<Link href="/contact">CONTACT US</Link>
 						</SciFiButton>
 					</div>
 				</div>
@@ -128,6 +131,14 @@ export function Footer() {
 									href="/sponsors"
 								>
 									Sponsors
+								</Link>
+							</li>
+							<li>
+								<Link
+									className="text-muted-foreground hover:text-foreground"
+									href="/contact"
+								>
+									Contact
 								</Link>
 							</li>
 						</ul>
