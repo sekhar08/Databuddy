@@ -1,4 +1,5 @@
 import {
+	ArrowSquareOutIcon,
 	AtomIcon,
 	BookOpenIcon,
 	BrainIcon,
@@ -126,6 +127,11 @@ export const contents: SidebarSection[] = [
 				title: "API Reference",
 				icon: DatabaseIcon,
 				children: [
+					{
+						title: "API Playground",
+						href: "https://api.databuddy.cc/",
+						icon: ArrowSquareOutIcon,
+					},
 					{
 						title: "Overview",
 						href: "/docs/api",

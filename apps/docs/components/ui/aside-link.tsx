@@ -23,10 +23,25 @@ export function AsideLink({
 	children,
 }: AsideLinkProps) {
 	const pathname = usePathname();
+	const isExternal = href.startsWith("http");
 
-	const isActive = startWith
+	const isActive = !isExternal && (startWith
 		? pathname.startsWith(startWith) && pathname === href
-		: pathname === href;
+		: pathname === href);
+
+	if (isExternal) {
+		return (
+			<a
+				className={cn(className)}
+				href={href}
+				rel="noopener noreferrer"
+				target="_blank"
+				title={title}
+			>
+				{children}
+			</a>
+		);
+	}
 
 	return (
 		<Link
