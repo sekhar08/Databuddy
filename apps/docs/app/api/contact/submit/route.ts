@@ -1,8 +1,14 @@
+import { Databuddy } from "@databuddy/sdk/node";
 import { isValidPhoneNumber, parsePhoneNumber } from "libphonenumber-js";
 import { type NextRequest, NextResponse } from "next/server";
 
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL || "";
 const SLACK_TIMEOUT_MS = 10_000;
+
+const databuddy = new Databuddy({
+	apiKey: process.env.DATABUDDY_API_KEY ?? "",
+	websiteId: process.env.DATABUDDY_WEBSITE_ID,
+});
 
 const MIN_NAME_LENGTH = 2;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -226,8 +232,29 @@ export async function POST(request: NextRequest) {
 		}
 
 		const contactData = validation.data;
+		const body = formData as Record<string, unknown>;
+		const anonId = typeof body.anonId === "string" ? body.anonId : undefined;
+		const sessionId =
+			typeof body.sessionId === "string" ? body.sessionId : undefined;
 
-		await sendToSlack(contactData, clientIP);
+		await Promise.all([
+			sendToSlack(contactData, clientIP),
+			databuddy
+				.track({
+					name: "contact_form_submitted",
+					anonymousId: anonId,
+					sessionId,
+					properties: {
+						fullName: contactData.fullName,
+						businessName: contactData.businessName,
+						website: contactData.website,
+						email: contactData.email,
+						phone: contactData.phone,
+						ip: clientIP,
+					},
+				})
+				.then(() => databuddy.flush()),
+		]);
 
 		return NextResponse.json({
 			success: true,

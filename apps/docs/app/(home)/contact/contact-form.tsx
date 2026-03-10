@@ -1,5 +1,6 @@
 "use client";
 
+import { getTrackingIds } from "@databuddy/sdk/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PaperPlaneIcon, SpinnerIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
@@ -115,6 +116,7 @@ export default function ContactForm() {
 
 	const submitForm = async (data: ContactFormValues) => {
 		setIsSubmitting(true);
+		const { anonId, sessionId } = getTrackingIds();
 
 		try {
 			const controller = new AbortController();
@@ -123,7 +125,7 @@ export default function ContactForm() {
 			const response = await fetch("/api/contact/submit", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(data),
+				body: JSON.stringify({ ...data, anonId, sessionId }),
 				signal: controller.signal,
 			});
 
