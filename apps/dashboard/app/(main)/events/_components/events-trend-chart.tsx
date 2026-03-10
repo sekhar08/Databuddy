@@ -7,15 +7,16 @@ import {
 	LightningIcon,
 	ListBulletsIcon,
 } from "@phosphor-icons/react";
-import dynamic from "next/dynamic";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
 	Area,
 	Bar,
 	CartesianGrid,
+	ComposedChart,
 	Customized,
 	Legend,
 	ReferenceArea,
+	ResponsiveContainer,
 	Tooltip,
 	XAxis,
 	YAxis,
@@ -23,20 +24,8 @@ import {
 import { METRIC_COLORS } from "@/components/charts/metrics-constants";
 import { useDynamicDasharray } from "@/components/charts/use-dynamic-dasharray";
 import { TableEmptyState } from "@/components/table/table-empty-state";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
-const ResponsiveContainer = dynamic(
-	() => import("recharts").then((mod) => mod.ResponsiveContainer),
-	{ ssr: false }
-);
-const AreaChart = dynamic(
-	() => import("recharts").then((mod) => mod.AreaChart),
-	{ ssr: false }
-);
-const BarChart = dynamic(() => import("recharts").then((mod) => mod.BarChart), {
-	ssr: false,
-});
+import { InlineToggle } from "@/components/ui/inline-toggle";
 
 export const EVENT_COLORS = [
 	"#2E27F5",
@@ -55,6 +44,7 @@ export const EVENT_COLORS = [
 
 const EVENTS_COLOR = METRIC_COLORS.pageviews.primary;
 const USERS_COLOR = METRIC_COLORS.visitors.primary;
+const CHART_HEIGHT = 300;
 
 type ChartMode = "aggregate" | "by-event";
 type ChartType = "area" | "bar";
@@ -143,14 +133,85 @@ const GRID_PROPS = {
 	strokeOpacity: 0.5,
 	vertical: false,
 } as const;
+const TOOLTIP_WRAPPER = {
+	outline: "none",
+	zIndex: 10,
+	pointerEvents: "auto",
+} as const;
+
+const MODE_OPTIONS = [
+	{
+		value: "aggregate" as const,
+		label: (
+			<>
+				<ChartLineUpIcon className="size-3.5" weight="duotone" />
+				<span className="hidden sm:inline">Total</span>
+			</>
+		),
+		ariaLabel: "Show aggregate view",
+	},
+	{
+		value: "by-event" as const,
+		label: (
+			<>
+				<ListBulletsIcon className="size-3.5" weight="duotone" />
+				<span className="hidden sm:inline">By Event</span>
+			</>
+		),
+		ariaLabel: "Show per-event breakdown",
+	},
+];
+
+const CHART_TYPE_OPTIONS = [
+	{
+		value: "area" as const,
+		label: <ChartLineUpIcon className="size-3.5" weight="duotone" />,
+		ariaLabel: "Area chart",
+	},
+	{
+		value: "bar" as const,
+		label: <ChartBarIcon className="size-3.5" weight="duotone" />,
+		ariaLabel: "Bar chart",
+	},
+];
 
 function aggregateColorResolver(entry: { dataKey: string }) {
 	return entry.dataKey === "events" ? EVENTS_COLOR : USERS_COLOR;
 }
 
-function eventColorResolver(eventNames: string[], entry: { dataKey: string }) {
-	const idx = eventNames.indexOf(entry.dataKey);
+function getEventColor(eventNames: string[], dataKey: string) {
+	const idx = eventNames.indexOf(dataKey);
 	return EVENT_COLORS[idx % EVENT_COLORS.length] ?? "#888";
+}
+
+function ChartCardShell({
+	children,
+	subtitle,
+}: {
+	children: React.ReactNode;
+	subtitle?: string;
+}) {
+	return (
+		<div className="flex h-full flex-col rounded border bg-card">
+			<div className="flex items-center gap-3 border-b px-3 py-2.5 sm:px-4 sm:py-3">
+				<div className="flex size-8 items-center justify-center rounded bg-accent">
+					<LightningIcon
+						className="size-4 text-muted-foreground"
+						weight="duotone"
+					/>
+				</div>
+				<div className="min-w-0 flex-1">
+					<h2 className="font-semibold text-foreground text-sm sm:text-base">
+						Events Trend
+					</h2>
+					{subtitle ? (
+						<p className="text-muted-foreground text-xs">{subtitle}</p>
+					) : null}
+				</div>
+			</div>
+			{children}
+		</div>
+	);
 }
 
 export function EventsTrendChart({
@@ -172,10 +233,12 @@ export function EventsTrendChart({
 
 	const hasPerEventData = perEventData.length > 0 && eventNames.length > 0;
 	const activeMode = hasPerEventData ? chartMode : "aggregate";
+	const isByEvent = activeMode === "by-event";
 
 	const isZoomed = zoomedData !== null;
 	const displayData = zoomedData ?? chartData;
 	const displayPerEventData = zoomedPerEventData ?? perEventData;
+	const activeData = isByEvent ? displayPerEventData : displayData;
 
 	const resetZoom = useCallback(() => {
 		setRefAreaLeft(null);
@@ -207,8 +270,7 @@ export function EventsTrendChart({
 		}
 
 		const rightBoundary = refAreaRight ?? refAreaLeft;
-		const source =
-			activeMode === "by-event" ? displayPerEventData : displayData;
+		const source = isByEvent ? displayPerEventData : displayData;
 		const leftIndex = source.findIndex((d) => d.date === refAreaLeft);
 		const rightIndex = source.findIndex((d) => d.date === rightBoundary);
 
@@ -223,7 +285,7 @@ export function EventsTrendChart({
 				? [leftIndex, rightIndex]
 				: [rightIndex, leftIndex];
 
-		if (activeMode === "by-event") {
+		if (isByEvent) {
 			setZoomedPerEventData(
 				displayPerEventData.slice(startIndex, endIndex + 1)
 			);
@@ -251,52 +313,30 @@ export function EventsTrendChart({
 	const totalEvents = displayData.reduce((sum, d) => sum + d.events, 0);
 	const totalUsers = displayData.reduce((sum, d) => sum + d.users, 0);
 
-	const dasharraySplitData =
-		activeMode === "by-event" ? displayPerEventData : displayData;
 	const [DasharrayCalculator, lineDasharrays] = useDynamicDasharray({
-		splitIndex: dasharraySplitData.length - 2,
+		splitIndex: activeData.length - 2,
 		chartType: "monotone",
 	});
 
+	const resolveEventColor = useMemo(
+		() => (entry: { dataKey: string }) =>
+			getEventColor(eventNames, entry.dataKey),
+		[eventNames]
+	);
+
 	if (isLoading) {
 		return (
-			<div className="flex h-full flex-col rounded border bg-card">
-				<div className="flex items-center gap-3 border-b px-3 py-2.5 sm:px-4 sm:py-3">
-					<div className="flex size-8 items-center justify-center rounded bg-accent">
-						<LightningIcon
-							className="size-4 text-muted-foreground"
-							weight="duotone"
-						/>
-					</div>
-					<div className="min-w-0 flex-1">
-						<div className="h-4 w-24 animate-pulse rounded bg-muted" />
-						<div className="mt-1 h-3 w-32 animate-pulse rounded bg-muted" />
-					</div>
-				</div>
+			<ChartCardShell>
 				<div className="flex-1 p-3 sm:p-4">
-					<div className="h-[260px] w-full animate-pulse rounded bg-muted" />
+					<div className="h-[300px] w-full animate-pulse rounded bg-muted" />
 				</div>
-			</div>
+			</ChartCardShell>
 		);
 	}
 
 	if (!chartData.length) {
 		return (
-			<div className="flex h-full flex-col rounded border bg-card">
-				<div className="flex items-center gap-3 border-b px-3 py-2.5 sm:px-4 sm:py-3">
-					<div className="flex size-8 items-center justify-center rounded bg-accent">
-						<LightningIcon
-							className="size-4 text-muted-foreground"
-							weight="duotone"
-						/>
-					</div>
-					<div className="min-w-0 flex-1">
-						<h2 className="font-semibold text-foreground text-sm sm:text-base">
-							Events Trend
-						</h2>
-						<p className="text-muted-foreground text-xs">No data available</p>
-					</div>
-				</div>
+			<ChartCardShell subtitle="No data available">
 				<div className="flex-1 p-3 sm:p-4">
 					<TableEmptyState
 						description="Event trends will appear here when events are tracked."
@@ -304,40 +344,11 @@ export function EventsTrendChart({
 						title="No event trend data"
 					/>
 				</div>
-			</div>
+			</ChartCardShell>
 		);
 	}
 
-	const activeData =
-		activeMode === "by-event" ? displayPerEventData : displayData;
-	const bottomMargin = activeData.length > 5 ? 35 : 5;
-
-	const byEventLegend = (
-		<Legend
-			formatter={(label: string) => {
-				const isHidden = hiddenEvents.has(label);
-				return (
-					<span
-						className={`cursor-pointer text-xs ${
-							isHidden
-								? "text-muted-foreground line-through opacity-50"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-					>
-						{label}
-					</span>
-				);
-			}}
-			iconSize={8}
-			iconType="circle"
-			onClick={(payload: { value: string }) => toggleEvent(payload.value)}
-			verticalAlign="bottom"
-			wrapperStyle={{
-				paddingTop: "12px",
-				fontSize: "12px",
-			}}
-		/>
-	);
+	const useBar = isByEvent && chartType === "bar";
 
 	return (
 		<div className="flex h-full flex-col rounded border bg-card">
@@ -351,13 +362,13 @@ export function EventsTrendChart({
 							Events Trend
 						</h2>
 						<p className="text-muted-foreground text-xs">
-							{activeMode === "by-event"
+							{isByEvent
 								? "Events broken down by type"
 								: "Event occurrences over time"}
 						</p>
 					</div>
 				</div>
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-1.5">
 					{isFetching && !isLoading && (
 						<div className="flex items-center gap-1.5 text-muted-foreground text-xs">
 							<ArrowCounterClockwiseIcon className="size-3 animate-spin" />
@@ -376,56 +387,24 @@ export function EventsTrendChart({
 						</Button>
 					)}
 					{hasPerEventData && (
-						<div className="flex items-center gap-1.5">
-							<div className="flex items-center rounded border">
-								<button
-									aria-label="Show aggregate view"
-									className={`flex items-center gap-1 rounded-l px-2 py-1 text-xs transition-colors ${activeMode === "aggregate" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-									onClick={() => setChartMode("aggregate")}
-									type="button"
-								>
-									<ChartLineUpIcon className="size-3.5" weight="duotone" />
-									<span className="hidden sm:inline">Total</span>
-								</button>
-								<button
-									aria-label="Show per-event breakdown"
-									className={`flex items-center gap-1 rounded-r px-2 py-1 text-xs transition-colors ${activeMode === "by-event" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-									onClick={() => setChartMode("by-event")}
-									type="button"
-								>
-									<ListBulletsIcon className="size-3.5" weight="duotone" />
-									<span className="hidden sm:inline">By Event</span>
-								</button>
-							</div>
-							{activeMode === "by-event" && (
-								<div className="flex items-center rounded border">
-									<button
-										aria-label="Area chart"
-										className={`rounded-l p-1.5 transition-colors ${chartType === "area" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-										onClick={() => setChartType("area")}
-										type="button"
-									>
-										<ChartLineUpIcon className="size-3.5" weight="duotone" />
-									</button>
-									<button
-										aria-label="Bar chart"
-										className={`rounded-r p-1.5 transition-colors ${chartType === "bar" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-										onClick={() => setChartType("bar")}
-										type="button"
-									>
-										<ChartBarIcon className="size-3.5" weight="duotone" />
-									</button>
-								</div>
-							)}
-						</div>
+						<>
+							<InlineToggle
+								onValueChangeAction={setChartMode}
+								options={MODE_OPTIONS}
+								value={chartMode}
+							/>
+							<InlineToggle
+								disabled={!isByEvent}
+								onValueChangeAction={setChartType}
+								options={CHART_TYPE_OPTIONS}
+								value={chartType}
+							/>
+						</>
 					)}
-					<Badge variant="gray">
-						<span className="font-mono text-[10px]">Drag to zoom</span>
-					</Badge>
 				</div>
 			</div>
 
-			{activeMode === "aggregate" && (
+			{!isByEvent && (
 				<div className="grid grid-cols-2 gap-3 border-b bg-muted/30 p-3">
 					<div className="space-y-0.5">
 						<p className="font-mono text-[10px] text-muted-foreground uppercase">
@@ -446,165 +425,141 @@ export function EventsTrendChart({
 				</div>
 			)}
 
-			<style>{`
-				.events-bar-chart .recharts-bar {
-					cursor: pointer;
-					transition: opacity 150ms ease-out;
-				}
-				.events-bar-chart:has(.recharts-bar:hover) .recharts-bar:not(:hover) {
-					opacity: 0.15;
-				}
-			`}</style>
 			<div className="relative flex-1 overflow-hidden p-2">
 				<div
 					className="relative select-none"
-					style={{
-						width: "100%",
-						height: activeMode === "by-event" ? 340 : 260,
-						minWidth: 300,
-						userSelect: refAreaLeft ? "none" : "auto",
-						WebkitUserSelect: refAreaLeft ? "none" : "auto",
-					}}
+					style={{ width: "100%", height: CHART_HEIGHT, minWidth: 300 }}
 				>
-					{activeMode === "by-event" && chartType === "bar" ? (
-						<ResponsiveContainer
-							className="events-bar-chart"
-							height="100%"
-							width="100%"
+					<ResponsiveContainer height="100%" width="100%">
+						<ComposedChart
+							className={useBar ? "events-bar-chart" : undefined}
+							data={activeData}
+							margin={{ top: 10, right: 10, left: 0, bottom: 35 }}
+							onMouseDown={handleMouseDown}
+							onMouseMove={handleMouseMove}
+							onMouseUp={handleMouseUp}
 						>
-							<BarChart
-								data={activeData}
-								margin={{
-									top: 10,
-									right: 10,
-									left: 0,
-									bottom: bottomMargin,
-								}}
-								onMouseDown={handleMouseDown}
-								onMouseMove={handleMouseMove}
-								onMouseUp={handleMouseUp}
-							>
-								<CartesianGrid {...GRID_PROPS} />
-								<XAxis
-									axisLine={false}
-									dataKey="date"
-									dy={5}
-									tick={AXIS_TICK}
-									tickLine={false}
+							<defs>
+								<linearGradient id="colorEvents" x1="0" x2="0" y1="0" y2="1">
+									<stop
+										offset="5%"
+										stopColor={EVENTS_COLOR}
+										stopOpacity={0.3}
+									/>
+									<stop
+										offset="95%"
+										stopColor={EVENTS_COLOR}
+										stopOpacity={0.05}
+									/>
+								</linearGradient>
+								<linearGradient id="colorUsers" x1="0" x2="0" y1="0" y2="1">
+									<stop offset="5%" stopColor={USERS_COLOR} stopOpacity={0.3} />
+									<stop
+										offset="95%"
+										stopColor={USERS_COLOR}
+										stopOpacity={0.05}
+									/>
+								</linearGradient>
+							</defs>
+							<CartesianGrid {...GRID_PROPS} />
+							<XAxis
+								axisLine={false}
+								dataKey="date"
+								dy={5}
+								tick={AXIS_TICK}
+								tickLine={false}
+							/>
+							<YAxis
+								allowDecimals={false}
+								axisLine={false}
+								tick={AXIS_TICK}
+								tickFormatter={formatYTick}
+								tickLine={false}
+								width={40}
+							/>
+							<Tooltip
+								content={
+									<ChartTooltip
+										resolveColor={
+											isByEvent ? resolveEventColor : aggregateColorResolver
+										}
+									/>
+								}
+								cursor={
+									useBar ? { fill: "var(--accent)", opacity: 0.3 } : undefined
+								}
+								wrapperStyle={TOOLTIP_WRAPPER}
+							/>
+							{refAreaLeft && refAreaRight && (
+								<ReferenceArea
+									fill="var(--primary)"
+									fillOpacity={0.1}
+									stroke="var(--primary)"
+									strokeOpacity={0.3}
+									x1={refAreaLeft}
+									x2={refAreaRight}
 								/>
-								<YAxis
-									allowDecimals={false}
-									axisLine={false}
-									tick={AXIS_TICK}
-									tickFormatter={formatYTick}
-									tickLine={false}
-									width={40}
+							)}
+							{isByEvent && (
+								<Legend
+									formatter={(label: string) => {
+										const isHidden = hiddenEvents.has(label);
+										return (
+											<span
+												className={`cursor-pointer text-xs ${
+													isHidden
+														? "text-muted-foreground line-through opacity-50"
+														: "text-muted-foreground hover:text-foreground"
+												}`}
+											>
+												{label}
+											</span>
+										);
+									}}
+									iconSize={8}
+									iconType="circle"
+									onClick={(p: { value: string }) => toggleEvent(p.value)}
+									verticalAlign="bottom"
+									wrapperStyle={{ paddingTop: "12px", fontSize: "12px" }}
 								/>
-								<Tooltip
-									content={
-										<ChartTooltip
-											resolveColor={(e) => eventColorResolver(eventNames, e)}
-										/>
-									}
-									cursor={{ fill: "var(--accent)", opacity: 0.3 }}
+							)}
+							{!isByEvent && (
+								<Legend
+									iconSize={8}
+									iconType="circle"
 									wrapperStyle={{
-										outline: "none",
-										zIndex: 10,
-										pointerEvents: "auto",
+										fontSize: "10px",
+										paddingTop: "5px",
 									}}
 								/>
-								{refAreaLeft && refAreaRight && (
-									<ReferenceArea
-										fill="var(--primary)"
-										fillOpacity={0.1}
-										stroke="var(--primary)"
-										strokeOpacity={0.3}
-										x1={refAreaLeft}
-										x2={refAreaRight}
-									/>
-								)}
-								{byEventLegend}
-								{eventNames.map((name, idx) => {
+							)}
+							{isByEvent &&
+								eventNames.map((name, idx) => {
 									const color =
 										EVENT_COLORS[idx % EVENT_COLORS.length] ?? "#888";
-									return (
-										<Bar
-											dataKey={name}
-											fill={color}
-											hide={hiddenEvents.has(name)}
-											key={name}
-											name={name}
-											stackId="events"
-										/>
-									);
-								})}
-							</BarChart>
-						</ResponsiveContainer>
-					) : activeMode === "by-event" ? (
-						<ResponsiveContainer height="100%" width="100%">
-							<AreaChart
-								data={activeData}
-								margin={{
-									top: 10,
-									right: 10,
-									left: 0,
-									bottom: bottomMargin,
-								}}
-								onMouseDown={handleMouseDown}
-								onMouseMove={handleMouseMove}
-								onMouseUp={handleMouseUp}
-							>
-								<CartesianGrid {...GRID_PROPS} />
-								<XAxis
-									axisLine={false}
-									dataKey="date"
-									dy={5}
-									tick={AXIS_TICK}
-									tickLine={false}
-								/>
-								<YAxis
-									allowDecimals={false}
-									axisLine={false}
-									tick={AXIS_TICK}
-									tickFormatter={formatYTick}
-									tickLine={false}
-									width={40}
-								/>
-								<Tooltip
-									content={
-										<ChartTooltip
-											resolveColor={(e) => eventColorResolver(eventNames, e)}
-										/>
+									const hidden = hiddenEvents.has(name);
+
+									if (useBar) {
+										return (
+											<Bar
+												dataKey={name}
+												fill={color}
+												hide={hidden}
+												key={name}
+												name={name}
+												stackId="events"
+											/>
+										);
 									}
-									wrapperStyle={{
-										outline: "none",
-										zIndex: 10,
-										pointerEvents: "auto",
-									}}
-								/>
-								{refAreaLeft && refAreaRight && (
-									<ReferenceArea
-										fill="var(--primary)"
-										fillOpacity={0.1}
-										stroke="var(--primary)"
-										strokeOpacity={0.3}
-										x1={refAreaLeft}
-										x2={refAreaRight}
-									/>
-								)}
-								{byEventLegend}
-								{eventNames.map((name, idx) => {
-									const color =
-										EVENT_COLORS[idx % EVENT_COLORS.length] ?? "#888";
+
 									return (
 										<Area
 											dataKey={name}
 											fill={color}
-											fillOpacity={0.15}
-											hide={hiddenEvents.has(name)}
+											fillOpacity={0.1}
+											hide={hidden}
 											key={name}
 											name={name}
-											stackId="events"
 											stroke={color}
 											strokeDasharray={
 												lineDasharrays.find((l) => l.name === name)
@@ -615,94 +570,7 @@ export function EventsTrendChart({
 										/>
 									);
 								})}
-								<Customized component={DasharrayCalculator} />
-							</AreaChart>
-						</ResponsiveContainer>
-					) : (
-						<ResponsiveContainer height="100%" width="100%">
-							<AreaChart
-								data={activeData}
-								margin={{
-									top: 10,
-									right: 10,
-									left: 0,
-									bottom: bottomMargin,
-								}}
-								onMouseDown={handleMouseDown}
-								onMouseMove={handleMouseMove}
-								onMouseUp={handleMouseUp}
-							>
-								<defs>
-									<linearGradient id="colorEvents" x1="0" x2="0" y1="0" y2="1">
-										<stop
-											offset="5%"
-											stopColor={EVENTS_COLOR}
-											stopOpacity={0.3}
-										/>
-										<stop
-											offset="95%"
-											stopColor={EVENTS_COLOR}
-											stopOpacity={0.05}
-										/>
-									</linearGradient>
-									<linearGradient id="colorUsers" x1="0" x2="0" y1="0" y2="1">
-										<stop
-											offset="5%"
-											stopColor={USERS_COLOR}
-											stopOpacity={0.3}
-										/>
-										<stop
-											offset="95%"
-											stopColor={USERS_COLOR}
-											stopOpacity={0.05}
-										/>
-									</linearGradient>
-								</defs>
-								<CartesianGrid {...GRID_PROPS} />
-								<XAxis
-									axisLine={false}
-									dataKey="date"
-									dy={5}
-									tick={AXIS_TICK}
-									tickLine={false}
-								/>
-								<YAxis
-									allowDecimals={false}
-									axisLine={false}
-									tick={AXIS_TICK}
-									tickFormatter={formatYTick}
-									tickLine={false}
-									width={40}
-								/>
-								<Tooltip
-									content={
-										<ChartTooltip resolveColor={aggregateColorResolver} />
-									}
-									wrapperStyle={{
-										outline: "none",
-										zIndex: 10,
-										pointerEvents: "auto",
-									}}
-								/>
-								<Legend
-									iconSize={8}
-									iconType="circle"
-									wrapperStyle={{
-										fontSize: "10px",
-										paddingTop: "5px",
-										bottom: bottomMargin > 5 ? 20 : 0,
-									}}
-								/>
-								{refAreaLeft && refAreaRight && (
-									<ReferenceArea
-										fill="var(--primary)"
-										fillOpacity={0.1}
-										stroke="var(--primary)"
-										strokeOpacity={0.3}
-										x1={refAreaLeft}
-										x2={refAreaRight}
-									/>
-								)}
+							{!isByEvent && (
 								<Area
 									dataKey="events"
 									fill="url(#colorEvents)"
@@ -716,6 +584,8 @@ export function EventsTrendChart({
 									strokeWidth={2}
 									type="monotone"
 								/>
+							)}
+							{!isByEvent && (
 								<Area
 									dataKey="users"
 									fill="url(#colorUsers)"
@@ -729,12 +599,22 @@ export function EventsTrendChart({
 									strokeWidth={2}
 									type="monotone"
 								/>
-								<Customized component={DasharrayCalculator} />
-							</AreaChart>
-						</ResponsiveContainer>
-					)}
+							)}
+							<Customized component={DasharrayCalculator} />
+						</ComposedChart>
+					</ResponsiveContainer>
 				</div>
 			</div>
+
+			<style>{`
+				.events-bar-chart .recharts-bar {
+					cursor: pointer;
+					transition: opacity 150ms ease-out;
+				}
+				.events-bar-chart:has(.recharts-bar:hover) .recharts-bar:not(:hover) {
+					opacity: 0.15;
+				}
+			`}</style>
 		</div>
 	);
 }
