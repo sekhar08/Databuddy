@@ -212,20 +212,45 @@ function InsightRow({ insight }: { insight: Insight }) {
 	);
 }
 
-function InsightSkeleton() {
+function InsightSkeleton({ wide }: { wide?: boolean }) {
 	return (
 		<div className="flex items-start gap-3 px-4 py-3">
 			<Skeleton className="mt-0.5 size-7 shrink-0 rounded" />
 			<div className="min-w-0 flex-1 space-y-2">
 				<div className="flex items-start justify-between gap-2">
 					<div className="flex-1 space-y-1">
-						<Skeleton className="h-4 w-32" />
-						<Skeleton className="h-3 w-24" />
+						<Skeleton className={cn("h-4 rounded", wide ? "w-44" : "w-32")} />
+						<Skeleton className="h-3 w-24 rounded" />
 					</div>
 					<Skeleton className="h-4 w-8 rounded" />
 				</div>
-				<Skeleton className="h-3 w-48" />
+				<Skeleton className={cn("h-3 rounded", wide ? "w-56" : "w-40")} />
 			</div>
+		</div>
+	);
+}
+
+function AnalyzingState() {
+	return (
+		<div className="space-y-0 divide-y">
+			<div className="flex items-center gap-3 px-4 py-4">
+				<div className="flex size-7 shrink-0 items-center justify-center rounded bg-primary/10">
+					<SparkleIcon
+						className="size-4 animate-pulse text-primary"
+						weight="duotone"
+					/>
+				</div>
+				<div className="min-w-0 flex-1">
+					<p className="font-medium text-foreground text-sm">
+						Analyzing your websites…
+					</p>
+					<p className="text-muted-foreground text-xs">
+						Databunny is checking traffic, errors, and performance
+					</p>
+				</div>
+			</div>
+			<InsightSkeleton />
+			<InsightSkeleton wide />
 		</div>
 	);
 }
@@ -266,10 +291,11 @@ export function SmartInsightsSection({
 			<div className="rounded border bg-card">
 				<div className="flex items-center gap-2 border-b px-4 py-3">
 					<SparkleIcon className="size-4 text-primary" weight="duotone" />
-					<Skeleton className="h-4 w-24" />
+					<h3 className="font-semibold text-foreground text-sm">
+						Actionable Insights
+					</h3>
 				</div>
-				<InsightSkeleton />
-				<InsightSkeleton />
+				<AnalyzingState />
 			</div>
 		);
 	}
