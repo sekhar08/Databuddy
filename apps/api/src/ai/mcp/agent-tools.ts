@@ -15,11 +15,13 @@ import { createAnnotationTools } from "../tools/annotations";
 import { createFunnelTools } from "../tools/funnels";
 import { createGoalTools } from "../tools/goals";
 import { createLinksTools } from "../tools/links";
+import { createProfileTools } from "../tools/profiles";
 import {
 	executeTimedQuery,
 	SQL_VALIDATION_ERROR,
 	validateSQL,
 } from "../tools/utils";
+import { webSearchTool } from "../tools/web-search";
 import { buildBatchQueryRequests, MCP_DATE_PRESETS } from "./mcp-utils";
 
 export interface McpAgentContext {
@@ -277,6 +279,8 @@ export function createMcpAgentTools() {
 				};
 			},
 		}),
+		web_search: webSearchTool,
+		...createProfileTools(),
 		...createFunnelTools(),
 		...createGoalTools(),
 		...createAnnotationTools(),

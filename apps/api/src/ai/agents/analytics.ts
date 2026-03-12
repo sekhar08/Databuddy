@@ -6,16 +6,22 @@ import { createAnnotationTools } from "../tools/annotations";
 import { executeQueryBuilderTool } from "../tools/execute-query-builder";
 import { executeSqlQueryTool } from "../tools/execute-sql-query";
 import { createFunnelTools } from "../tools/funnels";
+import { getDataTool } from "../tools/get-data";
 import { getTopPagesTool } from "../tools/get-top-pages";
 import { createGoalTools } from "../tools/goals";
 import { createLinksTools } from "../tools/links";
+import { createProfileTools } from "../tools/profiles";
+import { webSearchTool } from "../tools/web-search";
 import type { AgentConfig, AgentContext } from "./types";
 
 function createTools() {
 	return {
 		get_top_pages: getTopPagesTool,
+		get_data: getDataTool,
 		execute_query_builder: executeQueryBuilderTool,
 		execute_sql_query: executeSqlQueryTool,
+		web_search: webSearchTool,
+		...createProfileTools(),
 		...createFunnelTools(),
 		...createGoalTools(),
 		...createAnnotationTools(),

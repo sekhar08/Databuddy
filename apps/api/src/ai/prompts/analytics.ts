@@ -65,6 +65,17 @@ const ANALYTICS_CORE_RULES = `**Bounce rate (CRITICAL):**
 - After calling list_links, display results using the links-list JSON component
 - Do NOT use execute_query_builder for links - use list_links directly
 
+**Visitor Profiles:**
+- list_profiles: List recent visitors with session counts, pages viewed, device, country, browser. Filter by country, device_type, browser_name, referrer
+- get_profile: Get detailed info for a specific visitor by anonymous_id
+- get_profile_sessions: Get a visitor's session history with page-by-page journey
+- Use these when users ask about specific visitors, user segments, "who visited", "show me users from Germany", etc.
+
+**Web Search:**
+- web_search: Search the web for external context. Use for industry benchmarks, best practices, competitor analysis, marketing advice, SEO tips, or any question that goes beyond the analytics data
+- Pass a clear, specific query and optional context about the user's situation
+- Do NOT use web_search for analytics data - use the analytics tools
+
 **Custom Events:**
 - Use custom_events_discovery to get all events with their property keys and top 5 values in a SINGLE call — preferred over calling custom_events, custom_event_properties, and custom_events_property_top_values separately.
 - When analyzing a specific event, use filters: [{field:"event_name", op:"eq", value:"event-name"}]

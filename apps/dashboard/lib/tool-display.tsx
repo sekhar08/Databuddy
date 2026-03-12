@@ -294,13 +294,67 @@ const TOOLS: Record<string, ToolConfig> = {
 		},
 	],
 
+	// Batch query tool
+	get_data: [
+		(input) => {
+			const queries = input.queries as { type: string }[] | undefined;
+			if (queries?.length) {
+				const types = queries
+					.map((q) => QUERY_LABELS[q.type] ?? q.type.replace(/_/g, " "))
+					.slice(0, 3)
+					.join(", ");
+				return `Querying ${types}`;
+			}
+			return "Fetching analytics";
+		},
+		(output) => {
+			const results = output.results as Record<string, unknown> | undefined;
+			const count = results ? Object.keys(results).length : 0;
+			return count > 0 ? <p>Loaded {count} datasets</p> : null;
+		},
+	],
+
+	// Profile tools
+	list_profiles: [
+		() => "Listing visitors",
+		(output) => {
+			const count =
+				countArray(output, "profiles") ?? (output.count as number | null);
+			return count !== null ? <p>Found {count} visitors</p> : null;
+		},
+	],
+	get_profile: [
+		() => "Getting visitor profile",
+		(output) => {
+			const profile = output.profile as Record<string, unknown> | undefined;
+			return profile?.country ? <p>{profile.country as string}</p> : null;
+		},
+	],
+	get_profile_sessions: [
+		() => "Loading visitor sessions",
+		(output) => {
+			const count =
+				countArray(output, "sessions") ?? (output.count as number | null);
+			return count !== null ? <p>Found {count} sessions</p> : null;
+		},
+	],
+
+	// Web search
+	web_search: [
+		(input) => {
+			const query = input.query as string | undefined;
+			return query ? `Searching: ${query.slice(0, 40)}` : "Searching the web";
+		},
+		() => <p>Search complete</p>,
+	],
+
 	// Misc tools
 	competitor_analysis: [
 		() => "Analyzing competitors",
 		(output) => (output.success === true ? <p>Analysis complete</p> : null),
 	],
 };
-
+	
 export function formatToolLabel(toolName: string, input: Input): string {
 	const config = TOOLS[toolName];
 	return config ? config[0](input) : "Processing";
