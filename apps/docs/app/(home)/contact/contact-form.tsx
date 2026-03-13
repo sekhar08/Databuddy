@@ -18,7 +18,6 @@ import { PhoneInput } from "./phone-input";
 const URL_TLD_REGEX = /\.[a-z]{2,}$/i;
 
 const contactSchema = z.object({
-	company: z.string().max(0).optional(),
 	fullName: z
 		.string()
 		.min(1, "Full name is required")
@@ -109,7 +108,6 @@ export default function ContactForm() {
 	} = useForm<ContactFormValues>({
 		resolver: zodResolver(contactSchema),
 		defaultValues: {
-			company: "",
 			fullName: "",
 			businessName: "",
 			website: "",
@@ -133,7 +131,6 @@ export default function ContactForm() {
 					...data,
 					anonId,
 					sessionId,
-					...(data.company ? { honeypot: true } : {}),
 				}),
 				signal: controller.signal,
 			});
@@ -206,14 +203,6 @@ export default function ContactForm() {
 				className="space-y-4"
 				onSubmit={handleSubmit(submitForm)}
 			>
-				<div aria-hidden="true" className="absolute -left-[9999px] opacity-0">
-					<input
-						autoComplete="off"
-						tabIndex={-1}
-						type="text"
-						{...register("company")}
-					/>
-				</div>
 				<FormField
 					error={errors.fullName?.message}
 					id="full-name"
