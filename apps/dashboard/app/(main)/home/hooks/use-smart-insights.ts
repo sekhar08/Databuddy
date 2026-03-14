@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useOrganizationsContext } from "@/components/providers/organizations-provider";
 import { getUserTimezone } from "@/lib/timezone";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const STALE_TIME = 15 * 60 * 1000;
+const GC_TIME = 30 * 60 * 1000;
 
 export type InsightType =
 	| "error_spike"
@@ -50,13 +51,20 @@ async function fetchInsights(
 		credentials: "include",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ organizationId, timezone: getUserTimezone() }),
+		signal: AbortSignal.timeout(90_000),
 	});
 
 	if (!res.ok) {
 		throw new Error(`Insights request failed: ${res.status}`);
 	}
 
-	return res.json() as Promise<InsightsResponse>;
+	const data = (await res.json()) as InsightsResponse;
+
+	if (!data.success) {
+		throw new Error("Insights response unsuccessful");
+	}
+
+	return data;
 }
 
 export function useSmartInsights() {
@@ -70,13 +78,17 @@ export function useSmartInsights() {
 		queryFn: () => fetchInsights(orgId ?? ""),
 		enabled: !isOrgLoading && !!orgId,
 		staleTime: STALE_TIME,
+		gcTime: GC_TIME,
 		refetchInterval: STALE_TIME,
 		refetchOnWindowFocus: false,
-		retry: 1,
+		placeholderData: keepPreviousData,
+		retry: 2,
+		retryDelay: (attempt) => Math.min(2000 * 2 ** attempt, 15_000),
 	});
 
 	return {
 		insights: data?.insights ?? [],
+		source: data?.source ?? null,
 		isLoading: isLoading || isOrgLoading,
 		isFetching,
 		isError,

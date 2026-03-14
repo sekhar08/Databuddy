@@ -84,6 +84,7 @@ export default function HomePage() {
 		insights,
 		isLoading: isInsightsLoading,
 		isFetching: isInsightsFetching,
+		isError: isInsightsError,
 		refetch: refetchInsights,
 	} = useSmartInsights();
 
@@ -167,6 +168,7 @@ export default function HomePage() {
 				<div className="grid gap-6 lg:grid-cols-2">
 					<SmartInsightsSection
 						insights={insights}
+						isError={isInsightsError}
 						isFetching={isInsightsFetching}
 						isLoading={isLoading || isInsightsLoading}
 						onRefreshAction={refetchInsights}
