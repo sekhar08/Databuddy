@@ -11,7 +11,6 @@ import {
 } from "@lib/tracing";
 import type { context } from "@opentelemetry/api";
 import basketRouter from "@routes/basket";
-import emailRouter from "@routes/email";
 import llmRouter from "@routes/llm";
 import { trackRoute } from "@routes/track";
 import { paddleWebhook } from "@routes/webhooks/paddle";
@@ -109,7 +108,6 @@ const app = new Elysia()
 	})
 	.options("*", () => new Response(null, { status: 204 }))
 	.use(basketRouter)
-	.use(emailRouter)
 	.use(llmRouter)
 	.use(trackRoute)
 	.use(stripeWebhook)

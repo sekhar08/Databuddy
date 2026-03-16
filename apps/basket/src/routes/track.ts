@@ -1,7 +1,9 @@
-import { getWebsiteByIdV2 } from "@hooks/auth";
+import { getWebsiteByIdV2, resolveApiKeyOwnerId } from "@hooks/auth";
 import { getApiKeyFromHeader, hasKeyScope } from "@lib/api-key";
+import { checkAutumnUsage } from "@lib/billing";
 import { insertCustomEvents } from "@lib/event-service";
 import { captureError, record, setAttributes } from "@lib/tracing";
+import { VALIDATION_LIMITS, validatePayloadSize } from "@utils/validation";
 import { Elysia } from "elysia";
 import { z } from "zod";
 
@@ -16,22 +18,29 @@ const trackEventSchema = z.union([
 		websiteId: z.uuid().optional(),
 		source: z.string().max(64).optional(),
 	}),
-	z.array(
-		z.object({
-			name: z.string().min(1).max(256),
-			namespace: z.string().max(64).optional(),
-			timestamp: z.union([z.number(), z.string(), z.date()]).optional(),
-			properties: z.record(z.string(), z.unknown()).optional(),
-			anonymousId: z.string().max(256).optional(),
-			sessionId: z.string().max(256).optional(),
-			websiteId: z.uuid().optional(),
-			source: z.string().max(64).optional(),
-		})
-	),
+	z
+		.array(
+			z.object({
+				name: z.string().min(1).max(256),
+				namespace: z.string().max(64).optional(),
+				timestamp: z.union([z.number(), z.string(), z.date()]).optional(),
+				properties: z.record(z.string(), z.unknown()).optional(),
+				anonymousId: z.string().max(256).optional(),
+				sessionId: z.string().max(256).optional(),
+				websiteId: z.uuid().optional(),
+				source: z.string().max(64).optional(),
+			})
+		)
+		.max(VALIDATION_LIMITS.BATCH_MAX_SIZE),
 ]);
 
 type AuthResult =
-	| { success: true; ownerId: string; websiteId?: string }
+	| {
+			success: true;
+			ownerId: string;
+			websiteId?: string;
+			organizationId?: string;
+	  }
 	| {
 			success: false;
 			error: { status: string; message: string };
@@ -92,7 +101,11 @@ function resolveAuth(
 			}
 
 			setAttributes({ auth_method: "api_key", auth_success: true });
-			return { success: true, ownerId };
+			return {
+				success: true,
+				ownerId,
+				organizationId: apiKey.organizationId ?? undefined,
+			};
 		}
 
 		if (!websiteIdParam) {
@@ -134,6 +147,7 @@ function resolveAuth(
 			success: true,
 			ownerId: website.organizationId,
 			websiteId: websiteIdParam,
+			organizationId: website.organizationId,
 		};
 	});
 }
@@ -145,6 +159,10 @@ export const trackRoute = new Elysia().post(
 		const typedQuery = query as Record<string, string>;
 
 		try {
+			if (!validatePayloadSize(typedBody, VALIDATION_LIMITS.PAYLOAD_MAX_SIZE)) {
+				return json({ status: "error", message: "Payload too large" }, 413);
+			}
+
 			const parseResult = trackEventSchema.safeParse(typedBody);
 			if (!parseResult.success) {
 				return json(
@@ -164,6 +182,19 @@ export const trackRoute = new Elysia().post(
 			const auth = await resolveAuth(request.headers, websiteIdParam);
 			if (!auth.success) {
 				return json(auth.error, auth.status);
+			}
+
+			const billingUserId = auth.organizationId
+				? await resolveApiKeyOwnerId(auth.organizationId)
+				: auth.ownerId;
+
+			if (billingUserId) {
+				const billing = await checkAutumnUsage(billingUserId, "events", {
+					api_route: "track",
+				});
+				if ("exceeded" in billing) {
+					return billing.response;
+				}
 			}
 
 			const now = Date.now();

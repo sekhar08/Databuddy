@@ -4,9 +4,10 @@ import {
 	isValidOrigin,
 	isValidOriginFromSettings,
 } from "@hooks/auth";
+import { checkAutumnUsage } from "@lib/billing";
 import { logBlockedTraffic } from "@lib/blocked-traffic";
 import { sendEvent } from "@lib/producer";
-import { captureError, record, setAttributes } from "@lib/tracing";
+import { record, setAttributes } from "@lib/tracing";
 import { extractIpFromRequest } from "@utils/ip-geo";
 import { detectBot } from "@utils/user-agent";
 import {
@@ -14,7 +15,6 @@ import {
 	VALIDATION_LIMITS,
 	validatePayloadSize,
 } from "@utils/validation";
-import { Autumn as autumn } from "autumn-js";
 
 interface ValidationResult {
 	success: boolean;
@@ -166,74 +166,22 @@ export function validateRequest(
 		});
 
 		if (website.ownerId) {
-			try {
-				const result = await record("autumn.check", () =>
-					autumn.check({
-						customer_id: website.ownerId || "",
-						feature_id: "events",
-						send_event: true,
-						// @ts-expect-error autumn types are not up to date
-						properties: {
-							website_domain: website.domain,
-							website_id: website.id,
-							website_name: website.name,
-						},
-					})
+			const billing = await checkAutumnUsage(website.ownerId, "events", {
+				website_domain: website.domain,
+				website_id: website.id,
+				website_name: website.name,
+			});
+			if ("exceeded" in billing) {
+				logBlockedTraffic(
+					request,
+					body,
+					query,
+					"exceeded_event_limit",
+					"Validation Error",
+					undefined,
+					clientId
 				);
-				const data = result.data;
-
-				if (data) {
-					const usage = data.usage ?? 0;
-					const usageLimit = data.usage_limit ?? data.included_usage ?? 0;
-					const isUnlimited = data.unlimited ?? false;
-					const usageExceeds150Percent =
-						!isUnlimited && usageLimit > 0 && usage >= usageLimit * 1.5;
-
-					// Block only if usage exceeds 1.5x the limit
-					if (usageExceeds150Percent) {
-						logBlockedTraffic(
-							request,
-							body,
-							query,
-							"exceeded_event_limit",
-							"Validation Error",
-							undefined,
-							clientId
-						);
-						setAttributes({
-							validation_failed: true,
-							validation_reason: "exceeded_event_limit",
-							autumn_allowed: false,
-							usage_exceeded_150_percent: true,
-							usage,
-							usage_limit: usageLimit,
-						});
-						return {
-							error: new Response(
-								JSON.stringify({
-									status: "error",
-									message: "Exceeded event limit",
-								}),
-								{
-									status: 429,
-									headers: { "Content-Type": "application/json" },
-								}
-							),
-						};
-					}
-				}
-
-				setAttributes({
-					autumn_allowed: data?.allowed ?? false,
-					autumn_overage_allowed: data?.overage_allowed ?? false,
-				});
-			} catch (error) {
-				captureError(error, {
-					message: "Autumn check failed, allowing event through",
-				});
-				setAttributes({
-					autumn_check_failed: true,
-				});
+				return { error: billing.response };
 			}
 		}
 

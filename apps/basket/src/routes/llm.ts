@@ -1,8 +1,8 @@
 import { resolveApiKeyOwnerId } from "@hooks/auth";
 import { getApiKeyFromHeader, hasKeyScope } from "@lib/api-key";
+import { checkAutumnUsage } from "@lib/billing";
 import { insertAICallSpans } from "@lib/event-service";
-import { captureError, record, setAttributes } from "@lib/tracing";
-import { Autumn as autumn } from "autumn-js";
+import { captureError } from "@lib/tracing";
 import { Elysia } from "elysia";
 import { z } from "zod";
 
@@ -111,62 +111,11 @@ const app = new Elysia().post("/llm", async (context) => {
 			);
 		}
 
-		// Always run autumn check using the billing owner's user ID
-		try {
-			const result = await record("autumn.check", () =>
-				autumn.check({
-					customer_id: billingOwnerId,
-					feature_id: "events",
-					send_event: true,
-					// @ts-expect-error autumn types are not up to date
-					properties: {
-						api_key_id: apiKey.id,
-					},
-				})
-			);
-			const data = result.data;
-
-			if (data) {
-				const usage = data.usage ?? 0;
-				const usageLimit = data.usage_limit ?? data.included_usage ?? 0;
-				const isUnlimited = data.unlimited ?? false;
-				const usageExceeds150Percent =
-					!isUnlimited && usageLimit > 0 && usage >= usageLimit * 1.5;
-
-				// Block only if usage exceeds 1.5x the limit
-				if (usageExceeds150Percent) {
-					setAttributes({
-						validation_failed: true,
-						validation_reason: "exceeded_event_limit",
-						autumn_allowed: false,
-						usage_exceeded_150_percent: true,
-						usage,
-						usage_limit: usageLimit,
-					});
-					return new Response(
-						JSON.stringify({
-							status: "error",
-							message: "Exceeded event limit",
-						}),
-						{
-							status: 429,
-							headers: { "Content-Type": "application/json" },
-						}
-					);
-				}
-			}
-
-			setAttributes({
-				autumn_allowed: data?.allowed ?? false,
-				autumn_overage_allowed: data?.overage_allowed ?? false,
-			});
-		} catch (error) {
-			captureError(error, {
-				message: "Autumn check failed, allowing event through",
-			});
-			setAttributes({
-				autumn_check_failed: true,
-			});
+		const billing = await checkAutumnUsage(billingOwnerId, "events", {
+			api_key_id: apiKey.id,
+		});
+		if ("exceeded" in billing) {
+			return billing.response;
 		}
 
 		const parseResult = z
