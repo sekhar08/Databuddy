@@ -39,15 +39,15 @@ import {
 import { PercentageBadge } from "../utils/technology-helpers";
 import type { FullTabProps, MetricPoint } from "../utils/types";
 
-const CustomEventsSection = dynamic(() =>
-	import("./overview/_components/custom-events-section").then((mod) => ({
-		default: mod.CustomEventsSection,
-	}))
-);
-
 const GeoMapSection = dynamic(() =>
 	import("./overview/_components/geo-map-section").then((mod) => ({
 		default: mod.GeoMapSection,
+	}))
+);
+
+const OutboundLinksSection = dynamic(() =>
+	import("./overview/_components/outbound-links-section").then((mod) => ({
+		default: mod.OutboundLinksSection,
 	}))
 );
 
@@ -113,12 +113,7 @@ const QUERY_CONFIG = {
 			"utm_campaigns",
 		] as string[],
 		tech: ["device_types", "browsers", "operating_systems"] as string[],
-		customEvents: [
-			"custom_events",
-			"custom_event_properties",
-			"outbound_links",
-			"outbound_domains",
-		] as string[],
+		outbound: ["outbound_links", "outbound_domains"] as string[],
 		geo: ["country"] as string[],
 	},
 } as const;
@@ -205,8 +200,8 @@ export function WebsiteOverviewTab({
 				filters,
 			},
 			{
-				id: "overview-custom-events",
-				parameters: QUERY_CONFIG.parameters.customEvents,
+				id: "overview-outbound",
+				parameters: QUERY_CONFIG.parameters.outbound,
 				limit: QUERY_CONFIG.limit,
 				granularity: dateRange.granularity,
 				filters,
@@ -248,16 +243,11 @@ export function WebsiteOverviewTab({
 			getDataForQuery("overview-tech", "operating_systems") || [],
 	};
 
-	const customEventsData = {
-		custom_events:
-			getDataForQuery("overview-custom-events", "custom_events") || [],
-		custom_event_properties:
-			getDataForQuery("overview-custom-events", "custom_event_properties") ||
-			[],
+	const outboundData = {
 		outbound_links:
-			getDataForQuery("overview-custom-events", "outbound_links") || [],
+			getDataForQuery("overview-outbound", "outbound_links") || [],
 		outbound_domains:
-			getDataForQuery("overview-custom-events", "outbound_domains") || [],
+			getDataForQuery("overview-outbound", "outbound_domains") || [],
 	};
 
 	const geoData = {
@@ -1016,10 +1006,10 @@ export function WebsiteOverviewTab({
 				/>
 			</div>
 
-			<CustomEventsSection
-				customEventsData={customEventsData}
+			<OutboundLinksSection
+				data={outboundData}
 				isLoading={isLoading}
-				onAddFilter={onAddFilter}
+				onAddFilterAction={onAddFilter}
 			/>
 
 			{/* Technology */}

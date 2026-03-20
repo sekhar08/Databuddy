@@ -4,7 +4,6 @@ import {
 	ArrowSquareOutIcon,
 	BellIcon,
 	BookOpenIcon,
-	BrainIcon,
 	BugIcon,
 	BuildingsIcon,
 	CalendarIcon,
@@ -33,7 +32,6 @@ import {
 	PlugIcon,
 	PlusIcon,
 	ReceiptIcon,
-	RepeatIcon,
 	RoadHorizonIcon,
 	RobotIcon,
 	ShieldCheckIcon,
@@ -134,19 +132,11 @@ export const createWebsitesNavigation = (
 		(website) => ({ domain: website.domain })
 	),
 	createNavSection("Observability", ActivityIcon, [
-		// createNavItem("LLM Analytics", BrainIcon, "/llm", {
-		// 	highlight: true,
-		// 	flag: "llm",
-		// }),
 		createNavItem("Links", LinkIcon, "/links", {
 			highlight: true,
 		}),
 		createNavItem("Custom Events", LightningIcon, "/events", {
 			highlight: true,
-		}),
-		createNavItem("LLM Analytics", RobotIcon, "/llm", {
-			highlight: true,
-			flag: "llm",
 		}),
 	]),
 ];
@@ -295,19 +285,10 @@ export const websiteNavigation: NavigationSection[] = [
 			rootLevel: false,
 			gatedFeature: GATED_FEATURES.GOALS,
 		}),
-		createNavItem("Retention", RepeatIcon, "/retention", {
-			rootLevel: false,
-			gatedFeature: GATED_FEATURES.RETENTION,
-		}),
 		createNavItem("Feature Flags", FlagIcon, "/flags", {
 			alpha: true,
 			rootLevel: false,
 			gatedFeature: GATED_FEATURES.FEATURE_FLAGS,
-		}),
-		createNavItem("LLM Analytics", BrainIcon, "/llm", {
-			alpha: true,
-			rootLevel: false,
-			flag: "llm",
 		}),
 		createNavItem("Revenue", CurrencyDollarIcon, "/revenue", {
 			alpha: true,
