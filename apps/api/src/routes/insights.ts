@@ -267,7 +267,7 @@ async function analyzeWebsite(
 
 	try {
 		const result = await generateText({
-			model: gateway.chat("anthropic/claude-sonnet-4-5"),
+			model: gateway.chat("anthropic/claude-opus-4.6"),
 			output: Output.object({ schema: insightsOutputSchema }),
 			system: INSIGHTS_SYSTEM_PROMPT,
 			prompt,
