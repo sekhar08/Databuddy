@@ -9,6 +9,8 @@ import {
 	hasKeyScope,
 	isApiKeyPresent,
 } from "../lib/api-key";
+import { captureError, mergeWideEvent } from "../lib/tracing";
+
 export const mcp = new Elysia({ prefix: "/v1/mcp" })
 	.derive(async ({ request }) => {
 		const hasApiKey = isApiKeyPresent(request.headers);
@@ -34,6 +36,7 @@ export const mcp = new Elysia({ prefix: "/v1/mcp" })
 	})
 	.onBeforeHandle(async ({ request, isAuthenticated, set }) => {
 		if (!isAuthenticated) {
+			mergeWideEvent({ mcp_auth: "unauthorized" });
 			set.status = 401;
 			let id: string | number | null = null;
 			try {
@@ -65,6 +68,12 @@ export const mcp = new Elysia({ prefix: "/v1/mcp" })
 		}
 	})
 	.all("/", async ({ request, user, apiKey }) => {
+		mergeWideEvent({
+			route: "mcp",
+			mcp_session: Boolean(user),
+			mcp_api_key: Boolean(apiKey),
+		});
+
 		const ctx = {
 			requestHeaders: request.headers,
 			userId: user?.id ?? null,
@@ -105,8 +114,13 @@ export const mcp = new Elysia({ prefix: "/v1/mcp" })
 			sessionIdGenerator: undefined,
 			enableJsonResponse: true,
 		});
-		await mcpServer.connect(transport);
-		const response = await transport.handleRequest(request);
-		await mcpServer.close();
-		return response;
+		try {
+			await mcpServer.connect(transport);
+			return await transport.handleRequest(request);
+		} catch (error) {
+			captureError(error, { mcp_error: true });
+			throw error;
+		} finally {
+			await mcpServer.close().catch(() => {});
+		}
 	});

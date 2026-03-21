@@ -13,7 +13,7 @@ import { useLogger } from "evlog/elysia";
 import type { AgentConfig, AgentType } from "../ai/agents";
 import { createAgentConfig } from "../ai/agents";
 import { trackAgentEvent } from "../lib/databuddy";
-import { captureError, record, setAttributes } from "../lib/tracing";
+import { captureError, mergeWideEvent } from "../lib/tracing";
 import { validateWebsite } from "../lib/website-utils";
 
 function jsonError(status: number, code: string, message: string): Response {
@@ -124,11 +124,11 @@ export const agent = new Elysia({ prefix: "/v1/agent" })
 	.post(
 		"/chat",
 		function agentChat({ body, user, request }) {
-			return record("agentChat", async () => {
+			return (async () => {
 				const chatId = body.id ?? generateId();
 				let organizationId: string | null = null;
 
-				setAttributes({
+				mergeWideEvent({
 					agent_website_id: body.websiteId,
 					agent_user_id: user?.id ?? "unknown",
 					agent_chat_id: chatId,
@@ -262,7 +262,7 @@ export const agent = new Elysia({ prefix: "/v1/agent" })
 					});
 					return jsonError(500, "INTERNAL_ERROR", getErrorMessage(error));
 				}
-			});
+			})();
 		},
 		{ body: AgentRequestSchema, idleTimeout: 60_000 }
 	);

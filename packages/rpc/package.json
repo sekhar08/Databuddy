@@ -13,8 +13,6 @@
     "@databuddy/services": "workspace:*",
     "@databuddy/shared": "workspace:*",
     "@databuddy/validation": "workspace:*",
-    "@opentelemetry/api": "^1.9.0",
-    "@orpc/otel": "^1.12.2",
     "@orpc/server": "^1.12.2",
     "@types/jszip": "^3.4.1",
     "@upstash/qstash": "^2.8.4",

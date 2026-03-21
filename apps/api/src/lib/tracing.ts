@@ -1,24 +1,16 @@
 import { log } from "evlog";
-import { useLogger } from "evlog/elysia";
+import { useLogger as getRequestLogger } from "evlog/elysia";
 
 /**
- * Run a named operation. Kept for call-site compatibility; request-level timing
- * is emitted by evlog on the wide event.
+ * Merge structured fields into the active request wide event (evlog).
  */
-export function record<T>(_name: string, fn: () => Promise<T> | T): Promise<T> {
-	return Promise.resolve().then(() => fn());
-}
-
-/**
- * Merge structured fields into the active request wide event.
- */
-export function setAttributes(
-	attributes: Record<string, string | number | boolean>
+export function mergeWideEvent(
+	fields: Record<string, string | number | boolean>
 ): void {
 	try {
-		useLogger().set(attributes as Record<string, unknown>);
+		getRequestLogger().set(fields as Record<string, unknown>);
 	} catch {
-		log.info({ service: "api", ...attributes });
+		log.info({ service: "api", ...fields });
 	}
 }
 
@@ -28,13 +20,13 @@ export function setAttributes(
  */
 export function captureError(
 	error: unknown,
-	attributes?: Record<string, string | number | boolean>
+	fields?: Record<string, string | number | boolean>
 ): void {
 	const err = error instanceof Error ? error : new Error(String(error));
 	try {
-		const requestLog = useLogger();
-		if (attributes) {
-			requestLog.error(err, attributes as Record<string, unknown>);
+		const requestLog = getRequestLogger();
+		if (fields) {
+			requestLog.error(err, fields as Record<string, unknown>);
 		} else {
 			requestLog.error(err);
 		}
@@ -42,7 +34,7 @@ export function captureError(
 		log.error({
 			service: "api",
 			error: err.message,
-			...(attributes ?? {}),
+			...(fields ?? {}),
 		});
 	}
 }

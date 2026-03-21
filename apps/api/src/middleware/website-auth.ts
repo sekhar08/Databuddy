@@ -1,12 +1,12 @@
 import { auth } from "@databuddy/auth";
 import { and, db, eq, member } from "@databuddy/db";
 import { Elysia } from "elysia";
+import { useLogger } from "evlog/elysia";
 import {
 	getApiKeyFromHeader,
 	hasWebsiteScope,
 	isApiKeyPresent,
 } from "../lib/api-key";
-import { useLogger } from "evlog/elysia";
 import { getCachedWebsite, getTimezone } from "../lib/website-utils";
 
 function json(status: number, body: unknown) {

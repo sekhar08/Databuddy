@@ -6,7 +6,6 @@ import {
 	createRPCContext,
 	getBillingCustomerId,
 	recordORPCError,
-	setupUncaughtErrorHandlers,
 } from "@databuddy/rpc";
 import cors from "@elysiajs/cors";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
@@ -23,6 +22,7 @@ import {
 	enrichApiWideEvent,
 	flushBatchedApiDrain,
 } from "@/lib/evlog-api";
+import { captureError } from "@/lib/tracing";
 import { agent } from "./routes/agent";
 import { health } from "./routes/health";
 import { insights } from "./routes/insights";
@@ -39,7 +39,22 @@ initLogger({
 		keep: [{ status: 400 }, { duration: 1500 }],
 	},
 });
-setupUncaughtErrorHandlers();
+
+process.on("unhandledRejection", (reason, _promise) => {
+	captureError(reason);
+	log.error({
+		process: "unhandledRejection",
+		reason: reason instanceof Error ? reason.message : String(reason),
+	});
+});
+
+process.on("uncaughtException", (error) => {
+	captureError(error);
+	log.error({
+		process: "uncaughtException",
+		error: error instanceof Error ? error.message : String(error),
+	});
+});
 
 async function handleRpcRoute(
 	ctx: { request: Request },

@@ -6,7 +6,7 @@ import { Elysia } from "elysia";
 import { useLogger } from "evlog/elysia";
 import { Resend } from "resend";
 import { Webhook } from "svix";
-import { record, setAttributes } from "../../lib/tracing";
+import { mergeWideEvent } from "../../lib/tracing";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const SVIX_WEBHOOK_SECRET = process.env.AUTUMN_WEBHOOK_SECRET;
@@ -184,7 +184,7 @@ async function handleThresholdReached(
 	const limitAmount = featureData?.included_usage ?? 0;
 	const featureName = formatFeatureName(feature.id, feature.name);
 
-	setAttributes({
+	mergeWideEvent({
 		customer_id: customer.id,
 		feature_id: feature.id,
 		threshold_type,
@@ -192,20 +192,18 @@ async function handleThresholdReached(
 		limit: limitAmount,
 	});
 
-	const result = await record("resendSendEmail", () =>
-		resend.emails.send({
-			from: "Databuddy <alerts@databuddy.cc>",
-			to: email,
-			subject: `You've reached your ${featureName} limit`,
-			react: UsageLimitEmail({
-				featureName,
-				usageAmount,
-				limitAmount,
-				userName: customer.name ?? undefined,
-				thresholdType: threshold_type,
-			}),
-		})
-	);
+	const result = await resend.emails.send({
+		from: "Databuddy <alerts@databuddy.cc>",
+		to: email,
+		subject: `You've reached your ${featureName} limit`,
+		react: UsageLimitEmail({
+			featureName,
+			usageAmount,
+			limitAmount,
+			userName: customer.name ?? undefined,
+			thresholdType: threshold_type,
+		}),
+	});
 
 	if (result.error) {
 		useLogger().error(new Error(result.error.message), {
@@ -284,12 +282,12 @@ function verifyWebhookSignature(
 type WebhookBody =
 	| { type: string; data: ThresholdData | ProductsUpdatedData }
 	| {
-		customer: AutumnCustomer;
-		feature?: AutumnFeature;
-		threshold_type?: ThresholdType;
-		scenario?: ProductScenario;
-		updated_product?: { id: string; name: string };
-	};
+			customer: AutumnCustomer;
+			feature?: AutumnFeature;
+			threshold_type?: ThresholdType;
+			scenario?: ProductScenario;
+			updated_product?: { id: string; name: string };
+	  };
 
 export const autumnWebhook = new Elysia().post(
 	"/autumn",
@@ -310,12 +308,12 @@ export const autumnWebhook = new Elysia().post(
 			);
 		}
 
-		return record("autumnWebhook", async () => {
+		return (async () => {
 			// Svix-wrapped format: { type: "...", data: {...} }
 			if ("type" in parsedBody && "data" in parsedBody) {
 				const { type, data } = parsedBody;
 
-				setAttributes({
+				mergeWideEvent({
 					webhook_type: type,
 					svix_id: headers["svix-id"] ?? "unknown",
 				});
@@ -338,7 +336,7 @@ export const autumnWebhook = new Elysia().post(
 				const { customer, feature, threshold_type, scenario, updated_product } =
 					parsedBody;
 
-				setAttributes({
+				mergeWideEvent({
 					webhook_type: threshold_type
 						? "customer.threshold_reached"
 						: "customer.products.updated",
@@ -372,7 +370,7 @@ export const autumnWebhook = new Elysia().post(
 				autumn: { body: parsedBody },
 			});
 			return { success: true, message: "Unknown payload format, ignored" };
-		});
+		})();
 	},
 	{ parse: "none" }
 );

@@ -21,6 +21,7 @@ import { buildAnalyticsInstructions } from "../ai/prompts/analytics";
 import { executeQueryBuilderTool } from "../ai/tools/execute-query-builder";
 import { getDataTool } from "../ai/tools/get-data";
 import { getTopPagesTool } from "../ai/tools/get-top-pages";
+import { mergeWideEvent } from "../lib/tracing";
 
 const CACHE_TTL = 900;
 const CACHE_KEY_PREFIX = "ai-insights";
@@ -226,6 +227,7 @@ export const insights = new Elysia({ prefix: "/v1/insights" })
 	})
 	.onBeforeHandle(({ user, set }) => {
 		if (!user) {
+			mergeWideEvent({ insights_ai_auth: "unauthorized" });
 			set.status = 401;
 			return {
 				success: false,
@@ -239,10 +241,17 @@ export const insights = new Elysia({ prefix: "/v1/insights" })
 		async ({ body, user, request }) => {
 			const userId = user?.id;
 			if (!userId) {
+				mergeWideEvent({ insights_ai_error: "missing_user_id" });
 				return { success: false, error: "User ID required", insights: [] };
 			}
 
 			const { organizationId, timezone = "UTC" } = body;
+			mergeWideEvent({
+				route: "insights_ai",
+				insights_org_id: organizationId,
+				insights_timezone: timezone,
+			});
+
 			const redis = getRedis();
 			const cacheKey = `${CACHE_KEY_PREFIX}:${organizationId}`;
 
@@ -250,6 +259,7 @@ export const insights = new Elysia({ prefix: "/v1/insights" })
 				try {
 					const cached = await redis.get(cacheKey);
 					if (cached) {
+						mergeWideEvent({ insights_cache: "hit" });
 						const payload = JSON.parse(cached) as InsightsPayload;
 						return { success: true, ...payload };
 					}
@@ -258,6 +268,8 @@ export const insights = new Elysia({ prefix: "/v1/insights" })
 				}
 			}
 
+			mergeWideEvent({ insights_cache: "miss" });
+
 			const memberships = await db.query.member.findMany({
 				where: eq(member.userId, userId),
 				columns: { organizationId: true },
@@ -265,6 +277,7 @@ export const insights = new Elysia({ prefix: "/v1/insights" })
 
 			const orgIds = new Set(memberships.map((m) => m.organizationId));
 			if (!orgIds.has(organizationId)) {
+				mergeWideEvent({ insights_access: "denied" });
 				return {
 					success: false,
 					error: "Access denied to this organization",
@@ -278,6 +291,7 @@ export const insights = new Elysia({ prefix: "/v1/insights" })
 			});
 
 			if (sites.length === 0) {
+				mergeWideEvent({ insights_websites: 0 });
 				return { success: true, insights: [], source: "ai" };
 			}
 
@@ -319,17 +333,22 @@ export const insights = new Elysia({ prefix: "/v1/insights" })
 				if (redis && sorted.length > 0) {
 					redis
 						.setex(cacheKey, CACHE_TTL, JSON.stringify(payload))
-						.catch(() => { });
+						.catch(() => {});
 				}
 
 				if (redis && sorted.length === 0) {
 					redis
 						.setex(cacheKey, CACHE_TTL / 3, JSON.stringify(payload))
-						.catch(() => { });
+						.catch(() => {});
 				}
 
+				mergeWideEvent({
+					insights_returned: sorted.length,
+					insights_source: "ai",
+				});
 				return { success: true, ...payload };
 			} catch (error) {
+				mergeWideEvent({ insights_error: true });
 				useLogger().error(
 					error instanceof Error ? error : new Error(String(error)),
 					{ insights: { organizationId } }
