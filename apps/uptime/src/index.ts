@@ -1,18 +1,17 @@
 import { Receiver } from "@upstash/qstash";
 import { Elysia } from "elysia";
-import { initLogger } from "evlog";
-import { evlog, useLogger as logRequest } from "evlog/elysia";
+import { initLogger, log } from "evlog";
+import { evlog } from "evlog/elysia";
 import { z } from "zod";
 import { type CheckOptions, checkUptime, lookupSchedule } from "./actions";
 import type { JsonParsingConfig } from "./json-parser";
-import { sendUptimeEvent } from "./lib/producer";
 import {
-	captureError,
-	endRequestSpan,
-	initTracing,
-	shutdownTracing,
-	startRequestSpan,
-} from "./lib/tracing";
+	enrichUptimeWideEvent,
+	flushBatchedUptimeDrain,
+	uptimeLoggerDrain,
+} from "./lib/evlog-uptime";
+import { sendUptimeEvent } from "./lib/producer";
+import { captureError, mergeWideEvent } from "./lib/tracing";
 import {
 	getPreviousMonitorStatus,
 	sendUptimeTransitionEmailsIfNeeded,
@@ -20,25 +19,48 @@ import {
 
 initLogger({
 	env: { service: "uptime" },
+	drain: uptimeLoggerDrain,
+	sampling: {
+		// rates: { info: 20, warn: 50, debug: 5 },
+		// keep: [{ status: 400 }, { duration: 1500 }],
+	},
 });
-initTracing();
 
 process.on("unhandledRejection", (reason, _promise) => {
 	captureError(reason, { type: "unhandledRejection" });
+	log.error({
+		process: "unhandledRejection",
+		reason: reason instanceof Error ? reason.message : String(reason),
+	});
 });
 
 process.on("uncaughtException", (error) => {
 	captureError(error, { type: "uncaughtException" });
-	process.exit(1);
+	log.error({
+		process: "uncaughtException",
+		error: error instanceof Error ? error.message : String(error),
+	});
 });
 
 process.on("SIGTERM", async () => {
-	await shutdownTracing().catch(() => {});
+	log.info("lifecycle", "SIGTERM received, shutting down gracefully");
+	await flushBatchedUptimeDrain().catch((error) =>
+		log.error({
+			lifecycle: "drainFlush",
+			error: error instanceof Error ? error.message : String(error),
+		})
+	);
 	process.exit(0);
 });
 
 process.on("SIGINT", async () => {
-	await shutdownTracing().catch(() => {});
+	log.info("lifecycle", "SIGINT received, shutting down gracefully");
+	await flushBatchedUptimeDrain().catch((error) =>
+		log.error({
+			lifecycle: "drainFlush",
+			error: error instanceof Error ? error.message : String(error),
+		})
+	);
 	process.exit(0);
 });
 
@@ -57,33 +79,12 @@ const receiver = new Receiver({
 });
 
 const app = new Elysia()
-	.state("tracing", {
-		span: null as ReturnType<typeof startRequestSpan> | null,
-		startTime: 0,
-	})
-	.use(evlog())
-	.onBeforeHandle(function startTrace({ request, path, store }) {
-		const method = request.method;
-		const startTime = Date.now();
-		const span = startRequestSpan(method, request.url, path);
-
-		store.tracing = {
-			span,
-			startTime,
-		};
-	})
-	.onAfterHandle(function endTrace({ responseValue, store }) {
-		if (store.tracing?.span && store.tracing.startTime) {
-			const statusCode =
-				responseValue instanceof Response ? responseValue.status : 200;
-			endRequestSpan(store.tracing.span, statusCode, store.tracing.startTime);
-		}
-	})
-	.onError(function handleError({ error, code, store }) {
-		if (store.tracing?.span && store.tracing.startTime) {
-			const statusCode = code === "NOT_FOUND" ? 404 : 500;
-			endRequestSpan(store.tracing.span, statusCode, store.tracing.startTime);
-		}
+	.use(
+		evlog({
+			enrich: enrichUptimeWideEvent,
+		})
+	)
+	.onError(function handleError({ error, code }) {
 		captureError(error, { type: "elysia_error", code });
 	})
 	.get("/health", () => ({ status: "ok" }))
@@ -153,6 +154,15 @@ const app = new Elysia()
 
 			const monitorId = schedule.data.websiteId || scheduleId;
 
+			mergeWideEvent({
+				schedule_id: scheduleId,
+				monitor_id: monitorId,
+				organization_id: schedule.data.organizationId,
+				...(schedule.data.websiteId
+					? { website_id: schedule.data.websiteId }
+					: {}),
+			});
+
 			const maxRetries = parsed.data["upstash-retried"]
 				? Number.parseInt(parsed.data["upstash-retried"], 10) + 3
 				: 3;
@@ -178,13 +188,15 @@ const app = new Elysia()
 					monitorId,
 					url: schedule.data.url,
 				});
-				logRequest().error(new Error(result.error), {
-					uptime: { monitorId, url: schedule.data.url, step: "check" },
-				});
 				return new Response("Failed to check uptime", { status: 500 });
 			}
 
 			const previousStatus = await getPreviousMonitorStatus(monitorId);
+
+			mergeWideEvent({
+				previous_uptime_status:
+					previousStatus === undefined ? -1 : previousStatus,
+			});
 
 			try {
 				await sendUptimeEvent(result.data, monitorId);
@@ -199,25 +211,11 @@ const app = new Elysia()
 					monitorId,
 					httpCode: result.data.http_code,
 				});
-				logRequest().error(
-					error instanceof Error ? error : new Error(String(error)),
-					{
-						uptime: {
-							monitorId,
-							step: "producer",
-							httpCode: result.data.http_code,
-						},
-					}
-				);
 			}
 
 			return new Response("Uptime check complete", { status: 200 });
 		} catch (error) {
 			captureError(error, { type: "unexpected_error" });
-			logRequest().error(
-				error instanceof Error ? error : new Error(String(error)),
-				{ uptime: { step: "post_handler" } }
-			);
 			return new Response("Internal server error", { status: 500 });
 		}
 	});

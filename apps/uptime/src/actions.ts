@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { connect } from "node:tls";
 import { db, eq, uptimeSchedules } from "@databuddy/db";
 import { type JsonParsingConfig, parseJsonResponse } from "./json-parser";
-import { captureError, record } from "./lib/tracing";
+import { captureError, mergeWideEvent, record } from "./lib/tracing";
 import type { ActionResult, UptimeData } from "./types";
 import { MonitorStatus } from "./types";
 
@@ -55,6 +55,19 @@ export interface ScheduleData {
 	cacheBust: boolean;
 }
 
+function mergeUptimeCheckMetrics(data: UptimeData): void {
+	mergeWideEvent({
+		monitor_status: data.status,
+		http_code: data.http_code,
+		total_ms: data.total_ms,
+		ttfb_ms: data.ttfb_ms,
+		probe_region: data.probe_region,
+		ssl_valid: data.ssl_valid === 1,
+		response_bytes: data.response_bytes,
+		redirect_count: data.redirect_count,
+	});
+}
+
 export function lookupSchedule(
 	id: string
 ): Promise<ActionResult<ScheduleData>> {
@@ -76,6 +89,13 @@ export function lookupSchedule(
 				};
 			}
 
+			mergeWideEvent({
+				db_schedule_loaded: true,
+				schedule_cache_bust: schedule.cacheBust,
+				schedule_timeout_ms: schedule.timeout ?? 0,
+				json_parsing_enabled: schedule.jsonParsingConfig != null,
+			});
+
 			return {
 				success: true,
 				data: {
@@ -96,6 +116,7 @@ export function lookupSchedule(
 				},
 			};
 		} catch (error) {
+			captureError(error, { step: "lookup_schedule" });
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : "Database error",
@@ -399,32 +420,31 @@ export function checkUptime(
 			if (!pingResult.ok) {
 				const cert = await checkCertificate(normalizedUrl);
 
-				return {
-					success: true,
-					data: {
-						site_id: siteId,
-						url: normalizedUrl,
-						timestamp,
-						status,
-						http_code: pingResult.statusCode,
-						ttfb_ms: pingResult.ttfb,
-						total_ms: pingResult.total,
-						attempt,
-						retries: 0,
-						failure_streak: 0,
-						response_bytes: 0,
-						content_hash: "",
-						redirect_count: 0,
-						probe_region: probe.region,
-						probe_ip: probe.ip,
-						ssl_expiry: cert.expiry,
-						ssl_valid: cert.valid ? 1 : 0,
-						env: CONFIG.env,
-						check_type: "http",
-						user_agent: CONFIG.userAgent,
-						error: pingResult.error,
-					},
+				const data: UptimeData = {
+					site_id: siteId,
+					url: normalizedUrl,
+					timestamp,
+					status,
+					http_code: pingResult.statusCode,
+					ttfb_ms: pingResult.ttfb,
+					total_ms: pingResult.total,
+					attempt,
+					retries: 0,
+					failure_streak: 0,
+					response_bytes: 0,
+					content_hash: "",
+					redirect_count: 0,
+					probe_region: probe.region,
+					probe_ip: probe.ip,
+					ssl_expiry: cert.expiry,
+					ssl_valid: cert.valid ? 1 : 0,
+					env: CONFIG.env,
+					check_type: "http",
+					user_agent: CONFIG.userAgent,
+					error: pingResult.error,
 				};
+				mergeUptimeCheckMetrics(data);
+				return { success: true, data };
 			}
 
 			const [cert, contentHash] = await Promise.all([
@@ -442,35 +462,34 @@ export function checkUptime(
 					)
 				: null;
 
-			return {
-				success: true,
-				data: {
-					site_id: siteId,
-					url: normalizedUrl,
-					timestamp,
-					status,
-					http_code: pingResult.statusCode,
-					ttfb_ms: pingResult.ttfb,
-					total_ms: pingResult.total,
-					attempt,
-					retries: 0,
-					failure_streak: 0,
-					response_bytes: pingResult.bytes,
-					content_hash: contentHash,
-					redirect_count: pingResult.redirects,
-					probe_region: probe.region,
-					probe_ip: probe.ip,
-					ssl_expiry: cert.expiry,
-					ssl_valid: cert.valid ? 1 : 0,
-					env: CONFIG.env,
-					check_type: "http",
-					user_agent: CONFIG.userAgent,
-					error: "",
-					json_data: jsonData ? JSON.stringify(jsonData) : undefined,
-				},
+			const data: UptimeData = {
+				site_id: siteId,
+				url: normalizedUrl,
+				timestamp,
+				status,
+				http_code: pingResult.statusCode,
+				ttfb_ms: pingResult.ttfb,
+				total_ms: pingResult.total,
+				attempt,
+				retries: 0,
+				failure_streak: 0,
+				response_bytes: pingResult.bytes,
+				content_hash: contentHash,
+				redirect_count: pingResult.redirects,
+				probe_region: probe.region,
+				probe_ip: probe.ip,
+				ssl_expiry: cert.expiry,
+				ssl_valid: cert.valid ? 1 : 0,
+				env: CONFIG.env,
+				check_type: "http",
+				user_agent: CONFIG.userAgent,
+				error: "",
+				json_data: jsonData ? JSON.stringify(jsonData) : undefined,
 			};
+			mergeUptimeCheckMetrics(data);
+			return { success: true, data };
 		} catch (error) {
-			captureError(error);
+			captureError(error, { step: "check_uptime" });
 
 			return {
 				success: false,
