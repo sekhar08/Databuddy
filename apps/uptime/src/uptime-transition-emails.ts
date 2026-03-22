@@ -87,7 +87,7 @@ export async function getPreviousMonitorStatus(
 		}
 		return row.status;
 	} catch (error) {
-		captureError(error, { type: "uptime_previous_status_query" });
+		captureError(error, { error_step: "clickhouse_previous_status" });
 		return undefined;
 	}
 }
@@ -150,10 +150,10 @@ export async function sendUptimeTransitionEmailsIfNeeded(options: {
 		});
 		if (result.error) {
 			captureError(new Error(result.error.message), {
-				type: "uptime_transition_email_resend",
+				error_step: "transition_email_resend",
 			});
 		}
 	} catch (error) {
-		captureError(error, { type: "uptime_transition_email" });
+		captureError(error, { error_step: "transition_email" });
 	}
 }

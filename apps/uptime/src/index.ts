@@ -27,7 +27,7 @@ initLogger({
 });
 
 process.on("unhandledRejection", (reason, _promise) => {
-	captureError(reason, { type: "unhandledRejection" });
+	captureError(reason, { process: "unhandledRejection" });
 	log.error({
 		process: "unhandledRejection",
 		reason: reason instanceof Error ? reason.message : String(reason),
@@ -35,7 +35,7 @@ process.on("unhandledRejection", (reason, _promise) => {
 });
 
 process.on("uncaughtException", (error) => {
-	captureError(error, { type: "uncaughtException" });
+	captureError(error, { process: "uncaughtException" });
 	log.error({
 		process: "uncaughtException",
 		error: error instanceof Error ? error.message : String(error),
@@ -85,7 +85,10 @@ const app = new Elysia()
 		})
 	)
 	.onError(function handleError({ error, code }) {
-		captureError(error, { type: "elysia_error", code });
+		captureError(error, {
+			error_step: "elysia",
+			elysia_code: String(code),
+		});
 	})
 	.get("/health", () => ({ status: "ok" }))
 	.post("/", async ({ headers, body }) => {
@@ -100,8 +103,8 @@ const app = new Elysia()
 			if (!parsed.success) {
 				const errorDetails = parsed.error.format();
 				captureError(new Error("Missing required headers"), {
-					type: "validation_error",
-					scheduleId: headers["x-schedule-id"] as string,
+					error_step: "validation_headers",
+					schedule_id: String(headers["x-schedule-id"] ?? ""),
 				});
 				return new Response(
 					JSON.stringify({
@@ -127,8 +130,8 @@ const app = new Elysia()
 
 			if (!isValid) {
 				captureError(new Error("Invalid QStash signature"), {
-					type: "auth_error",
-					scheduleId,
+					error_step: "qstash_signature",
+					schedule_id: scheduleId,
 				});
 				return new Response("Invalid signature", { status: 401 });
 			}
@@ -136,8 +139,8 @@ const app = new Elysia()
 			const schedule = await lookupSchedule(scheduleId);
 			if (!schedule.success) {
 				captureError(new Error(schedule.error), {
-					type: "schedule_not_found",
-					scheduleId,
+					error_step: "schedule_not_found",
+					schedule_id: scheduleId,
 				});
 				return new Response(
 					JSON.stringify({
@@ -184,9 +187,9 @@ const app = new Elysia()
 
 			if (!result.success) {
 				captureError(new Error(result.error), {
-					type: "uptime_check_failed",
-					monitorId,
-					url: schedule.data.url,
+					error_step: "uptime_check_failed",
+					monitor_id: monitorId,
+					check_url: schedule.data.url,
 				});
 				return new Response("Failed to check uptime", { status: 500 });
 			}
@@ -207,15 +210,15 @@ const app = new Elysia()
 				});
 			} catch (error) {
 				captureError(error, {
-					type: "producer_error",
-					monitorId,
-					httpCode: result.data.http_code,
+					error_step: "producer_pipeline",
+					monitor_id: monitorId,
+					http_code: result.data.http_code,
 				});
 			}
 
 			return new Response("Uptime check complete", { status: 200 });
 		} catch (error) {
-			captureError(error, { type: "unexpected_error" });
+			captureError(error, { error_step: "handler" });
 			return new Response("Internal server error", { status: 500 });
 		}
 	});

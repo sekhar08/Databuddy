@@ -116,7 +116,7 @@ export function lookupSchedule(
 				},
 			};
 		} catch (error) {
-			captureError(error, { step: "lookup_schedule" });
+			captureError(error, { error_step: "lookup_schedule" });
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : "Database error",
@@ -489,7 +489,7 @@ export function checkUptime(
 			mergeUptimeCheckMetrics(data);
 			return { success: true, data };
 		} catch (error) {
-			captureError(error, { step: "check_uptime" });
+			captureError(error, { error_step: "check_uptime" });
 
 			return {
 				success: false,

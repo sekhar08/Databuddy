@@ -56,7 +56,7 @@ class UptimeProducer {
 			this.connected = true;
 			return true;
 		} catch (error) {
-			captureError(error, { step: "kafka_producer_connect" });
+			captureError(error, { error_step: "kafka_producer_connect" });
 			this.connected = false;
 			return false;
 		}
@@ -81,7 +81,7 @@ class UptimeProducer {
 			});
 			mergeWideEvent({ uptime_kafka_sent: true });
 		} catch (error) {
-			captureError(error, { step: "kafka_producer_send" });
+			captureError(error, { error_step: "kafka_producer_send" });
 		}
 	}
 
@@ -90,7 +90,7 @@ class UptimeProducer {
 			try {
 				await this.producer.disconnect();
 			} catch (error) {
-				captureError(error, { step: "kafka_producer_disconnect" });
+				captureError(error, { error_step: "kafka_producer_disconnect" });
 			}
 			this.producer = null;
 			this.connected = false;
