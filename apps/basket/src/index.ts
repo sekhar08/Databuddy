@@ -119,7 +119,7 @@ const app = new Elysia()
 	.use(trackRoute)
 	.use(stripeWebhook)
 	.use(paddleWebhook)
-	.get("/health", async function healthCheck() {
+	.get("/health/status", async function basketHealthStatus() {
 		const { clickHouseOG } = await import("@databuddy/db");
 		const { Kafka } = await import("kafkajs");
 
@@ -183,7 +183,8 @@ const app = new Elysia()
 			{ status, services },
 			{ status: status === "ok" ? 200 : 503 }
 		);
-	});
+	})
+	.get("/health", () => Response.json({ status: "ok" }, { status: 200 }));
 
 const port = process.env.PORT || 4000;
 

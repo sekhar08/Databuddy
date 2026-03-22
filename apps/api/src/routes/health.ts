@@ -19,25 +19,27 @@ async function ping(probe: () => Promise<void>) {
 	}
 }
 
-export const health = new Elysia().get("/health", async function healthCheck() {
-	const [postgres, clickhouse, cache] = await Promise.all([
-		ping(() => db.execute(sql`SELECT 1`).then(() => {})),
-		ping(async () => {
-			const { success } = await clickHouseOG.ping();
-			if (!success) {
-				throw new Error("ping failed");
-			}
-		}),
-		ping(() => redis.ping().then(() => {})),
-	]);
+export const health = new Elysia()
+	.get("/health/status", async function healthStatus() {
+		const [postgres, clickhouse, cache] = await Promise.all([
+			ping(() => db.execute(sql`SELECT 1`).then(() => {})),
+			ping(async () => {
+				const { success } = await clickHouseOG.ping();
+				if (!success) {
+					throw new Error("ping failed");
+				}
+			}),
+			ping(() => redis.ping().then(() => {})),
+		]);
 
-	const services = { postgres, clickhouse, redis: cache };
-	const status = Object.values(services).every((s) => s.status === "ok")
-		? "ok"
-		: "degraded";
+		const services = { postgres, clickhouse, redis: cache };
+		const status = Object.values(services).every((s) => s.status === "ok")
+			? "ok"
+			: "degraded";
 
-	return Response.json(
-		{ status, services },
-		{ status: status === "ok" ? 200 : 503 }
-	);
-});
+		return Response.json(
+			{ status, services },
+			{ status: status === "ok" ? 200 : 503 }
+		);
+	})
+	.get("/health", () => Response.json({ status: "ok" }, { status: 200 }));

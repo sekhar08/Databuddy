@@ -90,7 +90,7 @@ const app = new Elysia()
 			elysia_code: String(code),
 		});
 	})
-	.get("/health", async () => {
+	.get("/health/status", async () => {
 		const { db, sql } = await import("@databuddy/db");
 		const { Kafka } = await import("kafkajs");
 
@@ -150,6 +150,7 @@ const app = new Elysia()
 			{ status: status === "ok" ? 200 : 503 }
 		);
 	})
+	.get("/health", () => ({ status: "ok" }))
 	.post("/", async ({ headers, body }) => {
 		try {
 			const headerSchema = z.object({

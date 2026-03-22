@@ -39,7 +39,7 @@ const app = new Elysia()
 	.get("/", function rootRedirect() {
 		return redirect("https://databuddy.cc", 302);
 	})
-	.get("/health", async function healthCheck() {
+	.get("/health/status", async function linksHealthStatus() {
 		const { db, sql } = await import("@databuddy/db");
 		const { redis } = await import("@databuddy/redis");
 
@@ -74,6 +74,7 @@ const app = new Elysia()
 			{ status: status === "ok" ? 200 : 503 }
 		);
 	})
+	.get("/health", () => Response.json({ status: "ok" }, { status: 200 }))
 	.use(expiredRoute)
 	.use(redirectRoute);
 
