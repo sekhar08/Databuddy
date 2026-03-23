@@ -425,32 +425,7 @@ export function MonitorSheet({
 															Capture service latency
 														</FormLabel>
 														<p className="text-pretty text-muted-foreground text-xs">
-															When the response is JSON, we automatically
-															extract
-															<code className="mx-0.5 rounded bg-muted px-1 py-px font-mono text-[0.7rem]">
-																status
-															</code>{" "}
-															and common latency fields (
-															<code className="mx-0.5 rounded bg-muted px-1 py-px font-mono text-[0.7rem]">
-																latency
-															</code>
-															,{" "}
-															<code className="mx-0.5 rounded bg-muted px-1 py-px font-mono text-[0.7rem]">
-																latency_ms
-															</code>
-															,{" "}
-															<code className="mx-0.5 rounded bg-muted px-1 py-px font-mono text-[0.7rem]">
-																duration_ms
-															</code>
-															, …) into{" "}
-															<code className="mx-0.5 rounded bg-muted px-1 py-px font-mono text-[0.7rem]">
-																json_data
-															</code>
-															. HTTP timing (
-															<code className="mx-0.5 rounded bg-muted px-1 py-px font-mono text-[0.7rem]">
-																total_ms
-															</code>
-															) is always from the probe.
+															Parse JSON responses for status and latency fields
 														</p>
 													</div>
 													<FormControl>
@@ -476,7 +451,7 @@ export function MonitorSheet({
 							<Button
 								onClick={() => onCloseAction(false)}
 								type="button"
-								variant="ghost"
+								variant="outline"
 							>
 								Cancel
 							</Button>

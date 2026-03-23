@@ -919,7 +919,7 @@ function LinkSheetInner({ open, onOpenChange, link, onSave }: LinkSheetProps) {
 									<Button
 										onClick={() => onOpenChange(false)}
 										type="button"
-										variant="ghost"
+										variant="outline"
 									>
 										Cancel
 									</Button>
@@ -949,7 +949,7 @@ function LinkSheetInner({ open, onOpenChange, link, onSave }: LinkSheetProps) {
 									<Button
 										onClick={() => onOpenChange(false)}
 										type="button"
-										variant="ghost"
+										variant="outline"
 									>
 										Cancel
 									</Button>

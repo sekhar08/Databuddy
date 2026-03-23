@@ -1007,7 +1007,7 @@ export function CardSheet({
 						<div />
 					)}
 					<div className="flex gap-2">
-						<Button onClick={onCloseAction} type="button" variant="ghost">
+						<Button onClick={onCloseAction} type="button" variant="outline">
 							Cancel
 						</Button>
 						<Button

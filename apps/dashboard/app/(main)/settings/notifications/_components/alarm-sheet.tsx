@@ -500,7 +500,7 @@ export function AlarmSheet({
 							<Button
 								onClick={() => onCloseAction(false)}
 								type="button"
-								variant="ghost"
+								variant="outline"
 							>
 								Cancel
 							</Button>
