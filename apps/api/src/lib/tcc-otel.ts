@@ -15,7 +15,6 @@ let sdk: NodeSDK | null = null;
  * No-op when TCC_API_KEY is unset (local dev without observability).
  */
 export function initTccTracing(): void {
-export function initTccTracing(): void {
 	if (sdk || !process.env.TCC_API_KEY) {
 		return;
 	}

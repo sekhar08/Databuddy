@@ -113,6 +113,19 @@ const avg = (arr: number[]): number =>
 const pct = (num: number, denom: number): number =>
 	denom > 0 ? Math.round((num / denom) * 10_000) / 100 : 0;
 
+/** ClickHouse JSON often returns UInt64 as string; coercing avoids NaN and string concat bugs. */
+function toFiniteNumber(value: unknown, fallback = 0): number {
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return value;
+	}
+	if (typeof value === "bigint") {
+		const n = Number(value);
+		return Number.isFinite(n) ? n : fallback;
+	}
+	const n = Number(value);
+	return Number.isFinite(n) ? n : fallback;
+}
+
 const parseReferrer = (ref: string): ParsedReferrer => {
 	if (!ref || ref === "Direct" || ref.toLowerCase() === "(direct)") {
 		return { name: "Direct", type: "direct", domain: "" };
@@ -422,14 +435,23 @@ const queryFunnelErrors = async (
 	let totalErrors = 0;
 
 	for (const row of errorRows) {
-		sessionsWithErrors.add(row.vid);
-		totalErrors += row.error_count;
+		const count = toFiniteNumber(row.error_count, 0);
+		const normalized: ErrorRow = {
+			path: String(row.path ?? ""),
+			vid: String(row.vid ?? ""),
+			error_type: String(row.error_type ?? ""),
+			message: String(row.message ?? ""),
+			error_count: count,
+		};
 
-		const existing = errorsByPath.get(row.path);
+		sessionsWithErrors.add(normalized.vid);
+		totalErrors += count;
+
+		const existing = errorsByPath.get(normalized.path);
 		if (existing) {
-			existing.push(row);
+			existing.push(normalized);
 		} else {
-			errorsByPath.set(row.path, [row]);
+			errorsByPath.set(normalized.path, [normalized]);
 		}
 	}
 
@@ -447,7 +469,7 @@ export const processFunnelAnalytics = async (
 		buildStepQuery(s, i, filterSQL, params)
 	);
 
-	const rows = await chQuery<{
+	const rawRows = await chQuery<{
 		step: number;
 		name: string;
 		vid: string;
@@ -457,6 +479,13 @@ export const processFunnelAnalytics = async (
 		 SELECT DISTINCT step, name, vid, ts FROM events ORDER BY vid, ts`,
 		params
 	);
+
+	const rows = rawRows.map((r) => ({
+		step: toFiniteNumber(r.step, 0),
+		name: String(r.name ?? ""),
+		vid: String(r.vid ?? ""),
+		ts: toFiniteNumber(r.ts, 0),
+	}));
 
 	const visitors = groupByVisitor(rows);
 	const counts = countStepCompletions(visitors);
@@ -539,7 +568,7 @@ export const processFunnelAnalytics = async (
 		// Get errors for this step's path
 		const stepErrors = errorsByPath.get(s.target) ?? [];
 		const stepErrorCount = stepErrors.reduce(
-			(sum, e) => sum + e.error_count,
+			(sum, e) => sum + toFiniteNumber(e.error_count, 0),
 			0
 		);
 		const usersWithErrors = new Set(stepErrors.map((e) => e.vid)).size;
@@ -550,13 +579,14 @@ export const processFunnelAnalytics = async (
 			{ message: string; count: number; type: string }
 		>();
 		for (const e of stepErrors) {
+			const ec = toFiniteNumber(e.error_count, 0);
 			const existing = errorsByType.get(e.error_type);
 			if (existing) {
-				existing.count += e.error_count;
+				existing.count += ec;
 			} else {
 				errorsByType.set(e.error_type, {
 					message: e.message,
-					count: e.error_count,
+					count: ec,
 					type: e.error_type,
 				});
 			}
@@ -568,7 +598,7 @@ export const processFunnelAnalytics = async (
 			.map((e) => ({
 				message: e.message,
 				error_type: e.type,
-				count: e.count,
+				count: toFiniteNumber(e.count, 0),
 			}));
 
 		return {
@@ -710,7 +740,7 @@ export const processFunnelAnalyticsByReferrer = async (
 		buildStepQuery(s, i, filterSQL, params, true)
 	);
 
-	const rows = await chQuery<{
+	const rawRefRows = await chQuery<{
 		step: number;
 		vid: string;
 		ts: number;
@@ -720,6 +750,13 @@ export const processFunnelAnalyticsByReferrer = async (
 		 SELECT DISTINCT step, vid, ts, ref FROM events ORDER BY vid, ts`,
 		params
 	);
+
+	const rows = rawRefRows.map((r) => ({
+		step: toFiniteNumber(r.step, 0),
+		vid: String(r.vid ?? ""),
+		ts: toFiniteNumber(r.ts, 0),
+		ref: String(r.ref ?? ""),
+	}));
 
 	const visitors = groupByVisitor(rows);
 	const totalSteps = steps.length;
