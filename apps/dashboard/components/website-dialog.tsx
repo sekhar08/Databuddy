@@ -1,5 +1,6 @@
 "use client";
 
+import type { WebsiteOutput } from "@databuddy/rpc";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { type SubmitHandler, useForm } from "react-hook-form";
@@ -56,7 +57,7 @@ type FormData = z.infer<typeof formSchema>;
 interface WebsiteDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	website?: Website | null;
+	website?: Website | WebsiteOutput | null;
 	onSave?: (website: Website) => void;
 }
 

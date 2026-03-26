@@ -23,6 +23,7 @@ export {
 	workspaceInputSchema,
 } from "./procedures/with-workspace";
 export { type AppRouter, appRouter } from "./root";
+export type { WebsiteOutput } from "./routers/websites";
 export {
 	type ExportFormat,
 	type ExportMetadata,

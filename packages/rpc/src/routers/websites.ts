@@ -98,20 +98,54 @@ const calculateAverage = (values: { value: number }[]) =>
 		? values.reduce((sum, item) => sum + item.value, 0) / values.length
 		: 0;
 
+const websiteStatusOutputSchema = z.enum([
+	"ACTIVE",
+	"HEALTHY",
+	"UNHEALTHY",
+	"INACTIVE",
+	"PENDING",
+]);
+
 const websiteOutputSchema = z.object({
 	id: z.string(),
 	domain: z.string(),
 	name: z.string().nullable(),
-	status: z.string(),
+	status: websiteStatusOutputSchema,
 	isPublic: z.boolean(),
-	createdAt: z.union([z.date(), z.string()]),
-	updatedAt: z.union([z.date(), z.string()]),
+	createdAt: z.coerce.date(),
+	updatedAt: z.coerce.date(),
 	organizationId: z.string().optional(),
-	deletedAt: z.union([z.date(), z.string()]).nullable().optional(),
+	deletedAt: z.coerce.date().nullable(),
 	integrations: z.unknown().nullable().optional(),
 	settings: z.unknown().nullable().optional(),
 });
+
+const processedMiniChartDataSchema = z.object({
+	data: z.array(
+		z.object({
+			date: z.string(),
+			value: z.number(),
+		})
+	),
+	totalViews: z.number(),
+	hasAnyData: z.boolean(),
+	trend: z
+		.object({
+			type: z.enum(["up", "down", "neutral"]),
+			value: z.number(),
+		})
+		.nullable(),
+});
+
+const listWithChartsOutputSchema = z.object({
+	websites: z.array(websiteOutputSchema),
+	chartData: z.record(z.string(), processedMiniChartDataSchema),
+	activeUsers: z.record(z.string(), z.number()),
+});
+
 const successOutputSchema = z.object({ success: z.literal(true) });
+
+export type WebsiteOutput = z.infer<typeof websiteOutputSchema>;
 
 const calculateTrend = (dataPoints: { date: string; value: number }[]) => {
 	if (!dataPoints?.length || dataPoints.length < 4) {
@@ -308,7 +342,7 @@ export const websitesRouter = {
 			tags: ["Websites"],
 		})
 		.input(z.object({ organizationId: z.string().optional() }).default({}))
-		.output(z.record(z.string(), z.unknown()))
+		.output(listWithChartsOutputSchema)
 		.handler(async ({ context, input }) => {
 			const workspace = await withWorkspace(context, {
 				organizationId: input.organizationId,
@@ -361,6 +395,10 @@ export const websitesRouter = {
 					isPublic: site.isPublic,
 					createdAt: site.createdAt,
 					updatedAt: site.updatedAt,
+					organizationId: site.organizationId,
+					deletedAt: site.deletedAt ?? null,
+					integrations: site.integrations ?? null,
+					settings: site.settings ?? null,
 				};
 			}
 

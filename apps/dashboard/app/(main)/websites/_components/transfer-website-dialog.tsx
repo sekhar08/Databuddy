@@ -1,5 +1,6 @@
 "use client";
 
+import type { WebsiteOutput } from "@databuddy/rpc";
 import type { Website } from "@databuddy/shared/types/website";
 import {
 	ArrowRightIcon,
@@ -33,7 +34,7 @@ function getDicebearUrl(seed: string): string {
 }
 
 interface TransferWebsiteDialogProps {
-	website: Website;
+	website: Website | WebsiteOutput;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onTransferSuccess?: () => void;

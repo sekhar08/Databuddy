@@ -1,3 +1,4 @@
+import type { WebsiteOutput } from "@databuddy/rpc";
 import type {
 	ProcessedMiniChartData,
 	Website,
@@ -41,7 +42,7 @@ import MiniChart from "./mini-chart";
 import { TransferWebsiteDialog } from "./transfer-website-dialog";
 
 interface WebsiteCardProps {
-	website: Website;
+	website: Website | WebsiteOutput;
 	chartData?: ProcessedMiniChartData;
 	activeUsers?: number;
 	isLoadingChart?: boolean;

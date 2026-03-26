@@ -295,7 +295,7 @@ export default function PulsePage() {
 
 	// Build header subtitle with status
 	const headerSubtitle = schedule ? (
-		<div className="flex items-center gap-2">
+		<div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
 			<Badge
 				className={
 					!schedule.isPaused && currentStatus === "up"
