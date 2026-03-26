@@ -1,30 +1,44 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { InsightFeedbackVote } from "@/app/(main)/insights/lib/insights-local-storage";
 import {
 	loadDismissedIds,
-	loadFeedback,
 	saveDismissedIds,
-	saveFeedback,
 } from "@/app/(main)/insights/lib/insights-local-storage";
+import { orpc } from "@/lib/orpc";
 
-export function useInsightsLocalState(organizationId: string | undefined) {
+export function useInsightsLocalState(
+	organizationId: string | undefined,
+	insightIds: string[]
+) {
+	const queryClient = useQueryClient();
 	const [dismissedIds, setDismissedIds] = useState<string[]>([]);
-	const [feedbackById, setFeedbackById] = useState<
-		Record<string, InsightFeedbackVote>
-	>({});
 	const [hydrated, setHydrated] = useState(false);
+
+	const votesQuery = useQuery({
+		...orpc.insights.getVotes.queryOptions({
+			input: { insightIds },
+		}),
+		enabled: Boolean(organizationId) && insightIds.length > 0,
+	});
+
+	const setVoteMutation = useMutation({
+		...orpc.insights.setVote.mutationOptions(),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: orpc.insights.getVotes.key(),
+			});
+		},
+	});
 
 	useEffect(() => {
 		if (!organizationId) {
 			setDismissedIds([]);
-			setFeedbackById({});
 			setHydrated(true);
 			return;
 		}
 		setDismissedIds(loadDismissedIds(organizationId));
-		setFeedbackById(loadFeedback(organizationId));
 		setHydrated(true);
 	}, [organizationId]);
 
@@ -54,23 +68,16 @@ export function useInsightsLocalState(organizationId: string | undefined) {
 	}, [organizationId]);
 
 	const setFeedbackAction = useCallback(
-		(insightId: string, vote: InsightFeedbackVote | null) => {
+		(insightId: string, vote: "up" | "down" | null) => {
 			if (!organizationId) {
 				return;
 			}
-			setFeedbackById((prev) => {
-				const next = { ...prev };
-				if (vote === null) {
-					delete next[insightId];
-				} else {
-					next[insightId] = vote;
-				}
-				saveFeedback(organizationId, next);
-				return next;
-			});
+			setVoteMutation.mutate({ insightId, vote });
 		},
-		[organizationId]
+		[organizationId, setVoteMutation]
 	);
+
+	const feedbackById = votesQuery.data?.votes ?? {};
 
 	const dismissedIdSet = useMemo(() => new Set(dismissedIds), [dismissedIds]);
 

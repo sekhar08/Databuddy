@@ -75,6 +75,11 @@ export function InsightsPageContent() {
 		isFetchingNextPage,
 	} = useInsightsFeed();
 
+	const insightIdsForVotes = useMemo(
+		() => insights.map((i) => i.id),
+		[insights]
+	);
+
 	const {
 		hydrated,
 		dismissedIdSet,
@@ -82,7 +87,7 @@ export function InsightsPageContent() {
 		clearAllDismissedAction,
 		feedbackById,
 		setFeedbackAction,
-	} = useInsightsLocalState(orgId);
+	} = useInsightsLocalState(orgId, insightIdsForVotes);
 
 	const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
 	const [websiteFilter, setWebsiteFilter] = useState("all");

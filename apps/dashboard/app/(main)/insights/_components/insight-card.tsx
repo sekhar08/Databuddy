@@ -33,7 +33,7 @@ import {
 	formatComparisonWindow,
 	formatInsightFreshness,
 } from "@/app/(main)/insights/lib/insight-meta";
-import type { InsightFeedbackVote } from "@/app/(main)/insights/lib/insights-local-storage";
+import type { InsightFeedbackVote } from "@/app/(main)/insights/lib/insight-feedback-vote";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 

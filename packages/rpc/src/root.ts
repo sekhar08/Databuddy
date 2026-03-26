@@ -7,6 +7,7 @@ import { feedbackRouter } from "./routers/feedback";
 import { flagsRouter } from "./routers/flags";
 import { funnelsRouter } from "./routers/funnels";
 import { goalsRouter } from "./routers/goals";
+import { insightsRouter } from "./routers/insights";
 import { linksRouter } from "./routers/links";
 import { organizationsRouter } from "./routers/organizations";
 import { preferencesRouter } from "./routers/preferences";
@@ -27,6 +28,7 @@ export const appRouter = {
 	apikeys: apikeysRouter,
 	feedback: feedbackRouter,
 	flags: flagsRouter,
+	insights: insightsRouter,
 	targetGroups: targetGroupsRouter,
 	organizations: organizationsRouter,
 	billing: billingRouter,

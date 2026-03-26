@@ -1059,6 +1059,11 @@ export const feedbackStatus = pgEnum("feedback_status", [
 	"rejected",
 ]);
 
+export const insightFeedbackVoteEnum = pgEnum("insight_feedback_vote", [
+	"up",
+	"down",
+]);
+
 export const feedback = pgTable(
 	"feedback",
 	{
@@ -1139,6 +1144,44 @@ export const feedbackRedemptions = pgTable(
 			columns: [table.organizationId],
 			foreignColumns: [organization.id],
 			name: "feedback_redemptions_organization_id_fkey",
+		}).onDelete("cascade"),
+	]
+);
+
+export const insightUserFeedback = pgTable(
+	"insight_user_feedback",
+	{
+		id: text().primaryKey().notNull(),
+		userId: text("user_id").notNull(),
+		organizationId: text("organization_id").notNull(),
+		insightId: text("insight_id").notNull(),
+		vote: insightFeedbackVoteEnum().notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("insight_user_feedback_user_org_insight_uidx").on(
+			table.userId,
+			table.organizationId,
+			table.insightId
+		),
+		index("insight_user_feedback_organization_id_idx").using(
+			"btree",
+			table.organizationId.asc().nullsLast().op("text_ops")
+		),
+		foreignKey({
+			columns: [table.userId],
+			foreignColumns: [user.id],
+			name: "insight_user_feedback_user_id_fkey",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.organizationId],
+			foreignColumns: [organization.id],
+			name: "insight_user_feedback_organization_id_fkey",
 		}).onDelete("cascade"),
 	]
 );
