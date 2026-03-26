@@ -525,14 +525,11 @@ const WebVitalsFeature = () => {
 	return (
 		<div className="grid h-[150px] grid-cols-3 gap-3">
 			{metrics.map((m, i) => (
-				<motion.div
-					animate={{ opacity: 1, y: 0 }}
+				<div
 					className={cn(
-						"angled-rectangle-gradient flex h-full flex-col items-center justify-between gap-2 border border-border border-b-0 p-3 transition-all"
+						"angled-rectangle-gradient flex h-full flex-col items-center justify-between gap-2 border border-border border-b-0 p-3"
 					)}
-					initial={{ opacity: 0, y: 20 }}
 					key={m.label}
-					transition={{ duration: 0.5, delay: i * 0.15, ease: "easeOut" }}
 				>
 					<div className="relative flex size-14 items-center justify-center">
 						<svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
@@ -546,79 +543,45 @@ const WebVitalsFeature = () => {
 								r="16"
 								strokeWidth="2.5"
 							/>
-							{/* Glow effect layer */}
-							<motion.circle
-								animate={{
-									strokeDashoffset: 100 - m.score,
-								}}
+							<circle
 								className="stroke-primary"
 								cx="18"
 								cy="18"
 								fill="none"
-								initial={{ strokeDashoffset: 100 }}
 								pathLength="100"
 								r="16"
+								strokeDasharray="100"
+								strokeDashoffset={100 - m.score}
 								strokeLinecap="round"
 								strokeWidth="2.5"
 								style={{ opacity: 0.5 }}
-								transition={{
-									strokeDashoffset: {
-										duration: 1.8,
-										delay: i * 0.25,
-										ease: [0.16, 1, 0.3, 1],
-									},
-									filter: { duration: 0.5, delay: 1.8 + i * 0.25 },
-								}}
 							/>
-							{/* Main progress circle */}
-							<motion.circle
-								animate={{
-									strokeDashoffset: 100 - m.score,
-								}}
+							<circle
 								className="stroke-primary"
 								cx="18"
 								cy="18"
 								fill="none"
-								initial={{ strokeDashoffset: 100 }}
 								pathLength="100"
 								r="16"
+								strokeDasharray="100"
+								strokeDashoffset={100 - m.score}
 								strokeLinecap="round"
 								strokeWidth="2.5"
-								transition={{
-									duration: 1.8,
-									delay: i * 0.25,
-									ease: [0.16, 1, 0.3, 1],
-								}}
 							/>
 						</svg>
-						<motion.span
-							animate={{ opacity: 1 }}
-							className="absolute font-medium font-mono text-foreground text-sm"
-							initial={{ opacity: 0 }}
-							transition={{ duration: 0.3, delay: 1.8 + i * 0.25 }}
-						>
+						<span className="absolute font-medium font-mono text-foreground text-sm">
 							{m.score}
-						</motion.span>
+						</span>
 					</div>
 					<div className="space-y-0.5 text-center">
-						<motion.div
-							animate={{ opacity: 1 }}
-							className="font-bold font-mono text-[10px] text-muted-foreground uppercase tracking-widest"
-							initial={{ opacity: 0 }}
-							transition={{ duration: 0.3, delay: 0.3 + i * 0.15 }}
-						>
+						<div className="font-bold font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
 							{m.label}
-						</motion.div>
-						<motion.div
-							animate={{ opacity: 0.9 }}
-							className="font-medium font-mono text-foreground text-xs"
-							initial={{ opacity: 0 }}
-							transition={{ duration: 0.3, delay: 0.5 + i * 0.15 }}
-						>
+						</div>
+						<div className="font-medium font-mono text-foreground text-xs opacity-90">
 							{m.value}
-						</motion.div>
+						</div>
 					</div>
-				</motion.div>
+				</div>
 			))}
 		</div>
 	);
