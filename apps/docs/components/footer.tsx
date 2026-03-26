@@ -73,6 +73,14 @@ export function Footer() {
 							<li>
 								<Link
 									className="text-muted-foreground hover:text-foreground"
+									href="/calculator"
+								>
+									Cookie cost calculator
+								</Link>
+							</li>
+							<li>
+								<Link
+									className="text-muted-foreground hover:text-foreground"
 									href="/compare"
 								>
 									Compare

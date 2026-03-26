@@ -123,6 +123,7 @@ export interface NavMenuItem {
 export const navMenu: NavMenuItem[] = [
 	{ name: "Docs", path: "/docs" },
 	{ name: "Pricing", path: "/pricing" },
+	{ name: "Calculator", path: "/calculator" },
 	{ name: "Compare", path: "/compare" },
 	{ name: "Changelog", path: "/changelog" },
 	{
