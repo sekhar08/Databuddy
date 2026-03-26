@@ -550,6 +550,7 @@
       "name": "@databuddy/sdk",
       "version": "2.3.29",
       "devDependencies": {
+        "@playwright/test": "^1.58.2",
         "@types/node": "^20.0.0",
         "@types/react": "catalog:",
         "@vitejs/plugin-react": "^5.0.0",
