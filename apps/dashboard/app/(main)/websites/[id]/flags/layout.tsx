@@ -21,6 +21,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { useWebsite } from "@/hooks/use-websites";
 import { orpc } from "@/lib/orpc";
 import { isAnalyticsRefreshingAtom } from "@/stores/jotai/filterAtoms";
@@ -83,6 +84,10 @@ export default function FlagsLayout({
 
 	const { on: isExperimentOn, loading: experimentLoading } =
 		useFeature("experiment-50");
+	const isHydrated = useHydrated();
+
+	const showExperimentBanner =
+		isHydrated && !experimentLoading && flags !== undefined;
 
 	const handleRefresh = useCallback(async () => {
 		setIsRefreshing(true);
@@ -222,9 +227,9 @@ export default function FlagsLayout({
 				variant="tabs"
 			/>
 
-			{/* Experiment Flag Banner */}
+			{/* Experiment Flag Banner — defer until hydrated so SDK/flags match SSR */}
 			<div className="flex h-10 items-center border-border border-b bg-accent px-4">
-				{experimentLoading || !flags ? (
+				{!showExperimentBanner ? (
 					<div className="flex items-center gap-3">
 						<div className="flex items-center gap-2">
 							<Skeleton className="size-4 rounded" />

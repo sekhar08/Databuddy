@@ -5,6 +5,7 @@ import { Footer } from "@/components/footer";
 import { Description } from "@/components/landing/description";
 import FAQ from "@/components/landing/faq";
 import { GridCards } from "@/components/landing/grid-cards";
+import { DemoPreconnectLinks } from "@/components/landing/demo-preconnect-links";
 import Hero from "@/components/landing/hero";
 import Section from "@/components/landing/section";
 import Testimonials from "@/components/landing/testimonials";
@@ -56,6 +57,7 @@ export default async function HomePage() {
 
 	return (
 		<>
+			<DemoPreconnectLinks />
 			<StructuredData
 				elements={[
 					{

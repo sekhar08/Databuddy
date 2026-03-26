@@ -2,7 +2,6 @@
 
 import type { Icon } from "@phosphor-icons/react";
 import { ArrowLeftIcon } from "@phosphor-icons/react";
-import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -52,36 +51,15 @@ export function PageNavigation(props: PageNavigationProps) {
 					className="group flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
 					href={props.breadcrumb.href}
 				>
-					<motion.span
-						className="inline-flex"
-						transition={{ type: "spring", stiffness: 400, damping: 25 }}
-						whileHover={{ x: -2 }}
-					>
+					<span className="inline-flex transition-transform duration-200 group-hover:-translate-x-0.5">
 						<ArrowLeftIcon className="size-3.5" weight="bold" />
-					</motion.span>
+					</span>
 					<span>{props.breadcrumb.label}</span>
 				</Link>
-				<motion.span
-					animate={{ opacity: 1 }}
-					className="text-muted-foreground/40"
-					initial={{ opacity: 0 }}
-					transition={{ delay: 0.1 }}
-				>
-					/
-				</motion.span>
-				<motion.span
-					animate={{ opacity: 1, x: 0 }}
-					className="font-medium text-foreground text-sm"
-					initial={{ opacity: 0, x: -8 }}
-					transition={{
-						type: "spring",
-						stiffness: 300,
-						damping: 25,
-						delay: 0.05,
-					}}
-				>
+				<span className="text-muted-foreground/40">/</span>
+				<span className="font-medium text-foreground text-sm">
 					{props.currentPage}
-				</motion.span>
+				</span>
 			</div>
 		);
 	}
@@ -109,11 +87,7 @@ export function PageNavigation(props: PageNavigationProps) {
 						key={tab.id}
 					>
 						{IconComponent && (
-							<motion.span
-								animate={{ scale: isActive ? 1 : 0.95 }}
-								className="inline-flex"
-								transition={{ type: "spring", stiffness: 400, damping: 25 }}
-							>
+							<span className="inline-flex">
 								<IconComponent
 									className={cn(
 										"size-4 transition-colors",
@@ -121,31 +95,23 @@ export function PageNavigation(props: PageNavigationProps) {
 									)}
 									weight={isActive ? "fill" : "duotone"}
 								/>
-							</motion.span>
+							</span>
 						)}
 						{tab.label}
 						{tab.count !== undefined && tab.count > 0 && (
-							<motion.span
-								animate={{
-									scale: 1,
-									backgroundColor: isActive ? "var(--primary)" : "var(--muted)",
-								}}
+							<span
 								className={cn(
-									"flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 font-semibold text-xs tabular-nums",
-									isActive ? "text-primary-foreground" : "text-foreground"
+									"flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 font-semibold text-xs tabular-nums transition-colors",
+									isActive
+										? "bg-primary text-primary-foreground"
+										: "bg-muted text-foreground"
 								)}
-								initial={{ scale: 0.8 }}
-								transition={{ type: "spring", stiffness: 400, damping: 25 }}
 							>
 								{tab.count}
-							</motion.span>
+							</span>
 						)}
 						{isActive && (
-							<motion.div
-								className="absolute inset-x-0 bottom-0 h-0.5 bg-brand-purple"
-								layoutId="page-nav-indicator"
-								transition={{ type: "spring", stiffness: 400, damping: 30 }}
-							/>
+							<div className="absolute inset-x-0 bottom-0 h-0.5 bg-brand-purple" />
 						)}
 					</Link>
 				);

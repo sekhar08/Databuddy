@@ -2,42 +2,22 @@
 
 import { ArrowsOutSimpleIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { formatLocaleNumber } from "@/lib/format-locale-number";
+import { cn } from "@/lib/utils";
 import { SciFiButton } from "./scifi-btn";
 import { Spotlight } from "./spotlight";
 
 const tabs = [
-	{
-		id: "overview",
-		label: "Overview",
-		path: "",
-	},
-	{
-		id: "events",
-		label: "Events",
-		path: "/events",
-	},
-	{
-		id: "errors",
-		label: "Errors",
-		path: "/errors",
-	},
-	{
-		id: "vitals",
-		label: "Vitals",
-		path: "/vitals",
-	},
-	{
-		id: "funnels",
-		label: "Funnels",
-		path: "/funnels",
-	},
-	{
-		id: "flags",
-		label: "Flags",
-		path: "/flags",
-	},
-];
+	{ id: "overview", label: "Overview", path: "" },
+	{ id: "events", label: "Events", path: "/events" },
+	{ id: "errors", label: "Errors", path: "/errors" },
+	{ id: "vitals", label: "Vitals", path: "/vitals" },
+	{ id: "funnels", label: "Funnels", path: "/funnels" },
+	{ id: "flags", label: "Flags", path: "/flags" },
+] as const;
+
+const allTabIds = new Set(tabs.map((t) => t.id));
 
 type FullscreenElement = HTMLIFrameElement & {
 	webkitRequestFullscreen?: () => Promise<void>;
@@ -52,15 +32,34 @@ export default function Hero({
 	demoEmbedBaseUrl: string;
 	stars?: number | null;
 }) {
-	const [activeTab, setActiveTab] = useState(tabs[0].id);
-	const iframeRef = useRef<HTMLIFrameElement>(null);
+	const [activeTab, setActiveTab] = useState<string>(tabs[0].id);
+	const [loadedTabIds, setLoadedTabIds] = useState<Set<string>>(
+		() => new Set([tabs[0].id])
+	);
+	const [embedReady, setEmbedReady] = useState<Set<string>>(() => new Set());
+	const iframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({});
 
-	const baseUrl = demoEmbedBaseUrl;
-	const activeTabData = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
-	const iframeSrc = `${baseUrl}${activeTabData.path}?embed=true`;
+	useEffect(() => {
+		const run = () => setLoadedTabIds(new Set(allTabIds));
+		if (typeof requestIdleCallback !== "undefined") {
+			const id = requestIdleCallback(run);
+			return () => cancelIdleCallback(id);
+		}
+		const id = window.setTimeout(run, 300);
+		return () => clearTimeout(id);
+	}, []);
+
+	const selectTab = (id: string) => {
+		setActiveTab(id);
+		setLoadedTabIds((prev) => new Set(prev).add(id));
+	};
+
+	const markEmbedReady = (tabId: string) => {
+		setEmbedReady((prev) => new Set(prev).add(tabId));
+	};
 
 	const handleFullscreen = async () => {
-		const element = iframeRef.current as FullscreenElement | null;
+		const element = iframeRefs.current[activeTab] as FullscreenElement | null;
 		if (!element) {
 			return;
 		}
@@ -121,7 +120,7 @@ export default function Hero({
 						<span className="text-border">·</span>
 						{stars ? (
 							<>
-								<span>{stars.toLocaleString()} GitHub stars</span>
+								<span>{formatLocaleNumber(stars)} GitHub stars</span>
 								<span className="text-border">·</span>
 							</>
 						) : null}
@@ -136,19 +135,20 @@ export default function Hero({
 								const isActive = activeTab === tab.id;
 								return (
 									<button
-										className={`relative cursor-pointer px-4 py-3 font-medium text-sm transition-colors duration-200 sm:px-6 sm:py-3.5 sm:text-base ${
+										className={cn(
+											"relative cursor-pointer px-4 py-3 font-medium text-sm transition-colors duration-200 sm:px-6 sm:py-3.5 sm:text-base",
 											isActive
 												? "text-foreground"
 												: "text-muted-foreground hover:text-foreground"
-										}`}
+										)}
 										key={tab.id}
-										onClick={() => setActiveTab(tab.id)}
+										onClick={() => selectTab(tab.id)}
 										type="button"
 									>
 										{tab.label}
-										{isActive && (
+										{isActive ? (
 											<div className="absolute right-0 bottom-0 left-0 h-0.5 bg-foreground" />
-										)}
+										) : null}
 									</button>
 								);
 							})}
@@ -156,14 +156,46 @@ export default function Hero({
 					</div>
 
 					<div className="group relative rounded border border-border/50 bg-card/30 p-1.5 shadow-2xl backdrop-blur-sm sm:p-2">
-						<div className="relative">
-							<iframe
-								allowFullScreen
-								className="h-[400px] w-full rounded border-0 bg-background shadow-inner sm:h-[500px] lg:h-[600px]"
-								loading="lazy"
-								ref={iframeRef}
-								src={iframeSrc}
-								title={`Databuddy ${activeTabData.label} Demo`}
+						<div className="relative min-h-[400px] overflow-hidden rounded bg-muted sm:min-h-[500px] lg:min-h-[600px]">
+							{tabs.map((tab) => {
+								const isActive = activeTab === tab.id;
+								const src = loadedTabIds.has(tab.id)
+									? `${demoEmbedBaseUrl}${tab.path}?embed=true`
+									: "about:blank";
+								return (
+									<iframe
+										allowFullScreen
+										aria-hidden={!isActive}
+										className={cn(
+											"h-[400px] w-full rounded border-0 bg-muted shadow-inner sm:h-[500px] lg:h-[600px]",
+											isActive
+												? "relative z-10"
+												: "pointer-events-none absolute inset-0 z-0 opacity-0"
+										)}
+										key={tab.id}
+										onLoad={(e) => {
+											const url = e.currentTarget.src;
+											if (url.includes("embed=true")) {
+												markEmbedReady(tab.id);
+											}
+										}}
+										ref={(el) => {
+											iframeRefs.current[tab.id] = el;
+										}}
+										src={src}
+										tabIndex={isActive ? 0 : -1}
+										title={`Databuddy ${tab.label} Demo`}
+									/>
+								);
+							})}
+							<div
+								aria-hidden
+								className={cn(
+									"pointer-events-none absolute inset-0 z-20 rounded bg-muted transition-opacity duration-200",
+									loadedTabIds.has(activeTab) && !embedReady.has(activeTab)
+										? "opacity-100"
+										: "opacity-0"
+								)}
 							/>
 						</div>
 

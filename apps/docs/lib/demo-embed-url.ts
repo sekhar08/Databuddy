@@ -40,3 +40,14 @@ export function getDemoEmbedBaseUrl(
 	}
 	return `${PROD_APP_ORIGIN}/demo/${DATABUDDY_DEMO_EMBED_ID}`;
 }
+
+export function getDemoEmbedOrigin(
+	hostname: string | null | undefined
+): string {
+	const base = getDemoEmbedBaseUrl(hostname);
+	try {
+		return new URL(base).origin;
+	} catch {
+		return base;
+	}
+}
