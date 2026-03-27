@@ -24,7 +24,7 @@ import { type ReactNode, useMemo } from "react";
 import { toast } from "sonner";
 import type { InsightFeedbackVote } from "@/app/(main)/insights/lib/insight-feedback-vote";
 import {
-	buildInsightCopyText,
+	buildInsightAgentCopyText,
 	buildInsightShareUrl,
 	extractInsightPathHint,
 	formatComparisonWindow,
@@ -197,10 +197,10 @@ export function InsightCard({
 
 	const analyticsLabel = pathHint ? "View events" : "Overview";
 
-	const copySummaryAction = async () => {
+	const copyAgentPromptAction = async () => {
 		try {
-			await navigator.clipboard.writeText(buildInsightCopyText(insight));
-			toast.success("Copied insight to clipboard");
+			await navigator.clipboard.writeText(buildInsightAgentCopyText(insight));
+			toast.success("Copied prompt for agent");
 		} catch {
 			toast.error("Could not copy");
 		}
@@ -354,15 +354,16 @@ export function InsightCard({
 								<ArrowRightIcon className="size-3" weight="fill" />
 							</Link>
 							<button
+								aria-label="Copy structured prompt for an AI agent: issue, analysis, data, and recommended fix"
 								className="inline-flex items-center gap-1.5 rounded border px-3 py-1.5 font-medium text-foreground text-xs transition-colors hover:bg-accent"
 								onClick={(e) => {
 									e.stopPropagation();
-									copySummaryAction();
+									copyAgentPromptAction();
 								}}
 								type="button"
 							>
 								<CopyIcon aria-hidden className="size-3.5" weight="duotone" />
-								Copy
+								Copy prompt
 							</button>
 							<Link
 								aria-label={

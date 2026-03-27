@@ -37,6 +37,7 @@ import {
 	ShieldCheckIcon,
 	SparkleIcon,
 	SpeakerHighIcon,
+	SquaresFourIcon,
 	TargetIcon,
 	TrendUpIcon,
 	UserGearIcon,
@@ -140,13 +141,15 @@ const createDynamicNavigation = <T extends { id: string; name: string | null }>(
 export const createWebsitesNavigation = (
 	websites: Array<{ id: string; name: string | null; domain: string }>
 ): NavigationEntry[] => [
-	createNavItem("Home", HouseIcon, "/home", {
-		highlight: true,
-	}),
-	createNavItem("Insights", SparkleIcon, "/insights", {
-		highlight: true,
-		flag: "insights",
-	}),
+	createNavSection("Overview", SquaresFourIcon, [
+		createNavItem("Home", HouseIcon, "/home", {
+			highlight: true,
+		}),
+		createNavItem("Insights", SparkleIcon, "/insights", {
+			highlight: true,
+			flag: "insights",
+		}),
+	]),
 	...createDynamicNavigation(
 		websites,
 		"Websites",
@@ -487,13 +490,15 @@ const createLoadingNavigation = (
 ];
 
 export const createLoadingWebsitesNavigation = (): NavigationEntry[] => [
-	createNavItem("Home", HouseIcon, "/home", {
-		highlight: true,
-	}),
-	createNavItem("Insights", SparkleIcon, "/insights", {
-		highlight: true,
-		flag: "insights",
-	}),
+	createNavSection("Overview", SquaresFourIcon, [
+		createNavItem("Home", HouseIcon, "/home", {
+			highlight: true,
+		}),
+		createNavItem("Insights", SparkleIcon, "/insights", {
+			highlight: true,
+			flag: "insights",
+		}),
+	]),
 	...createLoadingNavigation(
 		"Websites",
 		GlobeSimpleIcon,

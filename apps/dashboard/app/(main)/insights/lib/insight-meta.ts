@@ -59,19 +59,42 @@ export function extractInsightPathHint(insight: Insight): string | null {
 	return sorted[0] ?? null;
 }
 
-export function buildInsightCopyText(insight: Insight): string {
-	const lines = [
+/** Structured prompt for pasting into an AI agent: issue, analysis, data, and recommendation. */
+export function buildInsightAgentCopyText(insight: Insight): string {
+	const siteLine = `${insight.websiteName ?? insight.websiteDomain} (${insight.websiteDomain})`;
+	const windowLine = formatComparisonWindow(insight);
+	const pathHint = extractInsightPathHint(insight);
+
+	const lines: string[] = [
+		"Paste the sections below into an AI assistant or agent. Ask it to help validate the analysis and implement the recommended fix.",
+		"",
+		"## Site",
+		siteLine,
+		"",
+		"## Issue",
 		insight.title,
 		"",
-		`${insight.websiteName ?? insight.websiteDomain}`,
-		"",
+		"## Analysis (what changed and why it matters — evidence from the data)",
 		insight.description,
 		"",
-		`Suggestion: ${insight.suggestion}`,
+		"## Recommended action",
+		insight.suggestion,
+		"",
+		"## Metadata",
+		`Insight type: ${insight.type.replaceAll("_", " ")} · Severity: ${insight.severity} · Priority: ${insight.priority}/10 · Sentiment: ${insight.sentiment}`,
 	];
-	const windowLine = formatComparisonWindow(insight);
-	if (windowLine) {
-		lines.push("", windowLine);
+
+	if (insight.changePercent !== undefined) {
+		const pct = insight.changePercent;
+		const sign = pct > 0 ? "+" : "";
+		lines.push(`Week-over-week change (approx.): ${sign}${pct}%`);
 	}
+	if (windowLine) {
+		lines.push(`Comparison window: ${windowLine}`);
+	}
+	if (pathHint) {
+		lines.push(`Related URL path (for filters or deep links): ${pathHint}`);
+	}
+
 	return lines.join("\n");
 }
