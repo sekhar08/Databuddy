@@ -227,8 +227,9 @@ export function InsightCard({
 			)}
 			id={`insight-${insight.id}`}
 		>
+			{/* biome-ignore lint/a11y/useSemanticElements: full-row toggle cannot use <button> because of nested dismiss control */}
 			<div
-				className="flex cursor-pointer items-start gap-3 px-4 py-3 sm:px-6"
+				className="flex min-h-20 cursor-pointer items-start gap-3 px-4 py-3 sm:px-6"
 				onClick={onToggleAction}
 				onKeyDown={(e) => {
 					if (e.key === "Enter" || e.key === " ") {
@@ -314,123 +315,129 @@ export function InsightCard({
 			</div>
 
 			{expanded && (
-				<div
-					className="space-y-2.5 px-4 pb-4 pl-14 sm:pl-15"
-					onClick={onToggleAction}
-					onKeyDown={(e) => {
-						if (e.key === "Enter" || e.key === " ") {
-							e.preventDefault();
-							onToggleAction();
-						}
-					}}
-					role="button"
-					tabIndex={-1}
-				>
-					<p className="text-pretty text-muted-foreground text-sm leading-relaxed">
-						{insight.description}
-					</p>
-
-					<div className="flex items-start gap-2 rounded bg-accent/60 px-2.5 py-2">
-						<SparkleIcon
-							className="mt-px size-3 shrink-0 text-primary"
-							weight="duotone"
-						/>
-						<p className="text-pretty text-foreground text-xs leading-relaxed">
-							{insight.suggestion}
-						</p>
-					</div>
-
+				<>
+					{/* biome-ignore lint/a11y/useSemanticElements: expanded panel toggle; nested links/buttons prevent a single <button> wrapper */}
 					<div
-						className="flex items-center gap-2 pt-0.5"
-						onClick={(e) => e.stopPropagation()}
-						onKeyDown={(e) => e.stopPropagation()}
-						role="group"
-					>
-						<Link
-							aria-label="Open AI agent with this insight as context"
-							className="inline-flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 font-medium text-primary-foreground text-xs transition-opacity hover:opacity-90"
-							href={agentHref}
-						>
-							Ask agent
-							<ArrowRightIcon className="size-3" weight="fill" />
-						</Link>
-						<button
-							className="inline-flex items-center gap-1.5 rounded border px-3 py-1.5 font-medium text-foreground text-xs transition-colors hover:bg-accent"
-							onClick={copySummaryAction}
-							type="button"
-						>
-							<CopyIcon aria-hidden className="size-3.5" weight="duotone" />
-							Copy
-						</button>
-						<Link
-							aria-label={
-								pathHint
-									? `View live events filtered to ${pathHint}`
-									: "Open website overview"
+						className="space-y-2.5 px-4 pb-4 pl-14 sm:pl-15"
+						onClick={onToggleAction}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								onToggleAction();
 							}
-							className="inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-muted-foreground text-xs transition-colors hover:bg-accent hover:text-foreground"
-							href={analyticsHref}
-						>
-							{analyticsLabel}
-						</Link>
+						}}
+						role="button"
+						tabIndex={-1}
+					>
+						<p className="text-pretty text-muted-foreground text-sm leading-relaxed">
+							{insight.description}
+						</p>
 
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<button
-									aria-label="More actions"
-									className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-									type="button"
-								>
-									<DotsThreeIcon className="size-4" weight="bold" />
-								</button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="start" className="w-40">
-								<DropdownMenuItem onClick={copyLinkAction}>
-									<LinkIcon className="size-4" weight="duotone" />
-									Copy link
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+						<div className="flex items-start gap-2 rounded bg-accent/60 px-2.5 py-2">
+							<SparkleIcon
+								className="mt-px size-3 shrink-0 text-primary"
+								weight="duotone"
+							/>
+							<p className="text-pretty text-foreground text-xs leading-relaxed">
+								{insight.suggestion}
+							</p>
+						</div>
 
-						{onFeedbackAction && (
-							<div className="ml-auto flex items-center gap-1.5">
-								<span className="text-muted-foreground text-xs">Useful?</span>
-								<button
-									aria-label="Mark as helpful"
-									aria-pressed={feedbackVote === "up"}
-									className={cn(
-										"flex size-7 items-center justify-center rounded border transition-colors",
-										feedbackVote === "up"
-											? "border-primary bg-primary/10 text-primary"
-											: "text-muted-foreground hover:bg-accent hover:text-foreground"
-									)}
-									onClick={() =>
-										onFeedbackAction(feedbackVote === "up" ? null : "up")
-									}
-									type="button"
-								>
-									<ThumbsUpIcon className="size-3.5" weight="duotone" />
-								</button>
-								<button
-									aria-label="Mark as not helpful"
-									aria-pressed={feedbackVote === "down"}
-									className={cn(
-										"flex size-7 items-center justify-center rounded border transition-colors",
-										feedbackVote === "down"
-											? "border-destructive bg-destructive/10 text-destructive"
-											: "text-muted-foreground hover:bg-accent hover:text-foreground"
-									)}
-									onClick={() =>
-										onFeedbackAction(feedbackVote === "down" ? null : "down")
-									}
-									type="button"
-								>
-									<ThumbsDownIcon className="size-3.5" weight="duotone" />
-								</button>
-							</div>
-						)}
+						<div className="flex items-center gap-2 pt-0.5">
+							<Link
+								aria-label="Open AI agent with this insight as context"
+								className="inline-flex items-center gap-1.5 rounded bg-primary px-3 py-1.5 font-medium text-primary-foreground text-xs transition-opacity hover:opacity-90"
+								href={agentHref}
+								onClick={(e) => e.stopPropagation()}
+							>
+								Ask agent
+								<ArrowRightIcon className="size-3" weight="fill" />
+							</Link>
+							<button
+								className="inline-flex items-center gap-1.5 rounded border px-3 py-1.5 font-medium text-foreground text-xs transition-colors hover:bg-accent"
+								onClick={(e) => {
+									e.stopPropagation();
+									copySummaryAction();
+								}}
+								type="button"
+							>
+								<CopyIcon aria-hidden className="size-3.5" weight="duotone" />
+								Copy
+							</button>
+							<Link
+								aria-label={
+									pathHint
+										? `View live events filtered to ${pathHint}`
+										: "Open website overview"
+								}
+								className="inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-muted-foreground text-xs transition-colors hover:bg-accent hover:text-foreground"
+								href={analyticsHref}
+								onClick={(e) => e.stopPropagation()}
+							>
+								{analyticsLabel}
+							</Link>
+
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<button
+										aria-label="More actions"
+										className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+										onClick={(e) => e.stopPropagation()}
+										type="button"
+									>
+										<DotsThreeIcon className="size-4" weight="bold" />
+									</button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="start" className="w-40">
+									<DropdownMenuItem onClick={copyLinkAction}>
+										<LinkIcon className="size-4" weight="duotone" />
+										Copy link
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+
+							{onFeedbackAction && (
+								<div className="ml-auto flex items-center gap-1.5">
+									<span className="text-muted-foreground text-xs">Useful?</span>
+									<button
+										aria-label="Mark as helpful"
+										aria-pressed={feedbackVote === "up"}
+										className={cn(
+											"flex size-7 items-center justify-center rounded border transition-colors",
+											feedbackVote === "up"
+												? "border-primary bg-primary/10 text-primary"
+												: "text-muted-foreground hover:bg-accent hover:text-foreground"
+										)}
+										onClick={(e) => {
+											e.stopPropagation();
+											onFeedbackAction(feedbackVote === "up" ? null : "up");
+										}}
+										type="button"
+									>
+										<ThumbsUpIcon className="size-3.5" weight="duotone" />
+									</button>
+									<button
+										aria-label="Mark as not helpful"
+										aria-pressed={feedbackVote === "down"}
+										className={cn(
+											"flex size-7 items-center justify-center rounded border transition-colors",
+											feedbackVote === "down"
+												? "border-destructive bg-destructive/10 text-destructive"
+												: "text-muted-foreground hover:bg-accent hover:text-foreground"
+										)}
+										onClick={(e) => {
+											e.stopPropagation();
+											onFeedbackAction(feedbackVote === "down" ? null : "down");
+										}}
+										type="button"
+									>
+										<ThumbsDownIcon className="size-3.5" weight="duotone" />
+									</button>
+								</div>
+							)}
+						</div>
 					</div>
-				</div>
+				</>
 			)}
 		</div>
 	);
