@@ -26,6 +26,7 @@ const priorityRules = [
 	{ pattern: "/changelog", priority: 0.7 },
 	{ pattern: "/api", priority: 0.7 },
 	{ pattern: "/roadmap", priority: 0.6 },
+	{ pattern: "/manifesto", priority: 0.65 },
 	{ pattern: "/sponsors", priority: 0.6 },
 	{ pattern: "/ambassadors", priority: 0.6 },
 	{ pattern: "/privacy", priority: 0.5 },
@@ -76,7 +77,8 @@ function getChangeFrequency(url: string): "weekly" | "monthly" | "yearly" {
 	if (
 		url.includes("/pricing") ||
 		url.includes("/calculator") ||
-		url.includes("/roadmap")
+		url.includes("/roadmap") ||
+		url.includes("/manifesto")
 	) {
 		return "monthly";
 	}
@@ -133,6 +135,7 @@ export async function generateSitemapEntries(): Promise<MetadataRoute.Sitemap> {
 			"/pricing",
 			"/calculator",
 			"/roadmap",
+			"/manifesto",
 			"/sponsors",
 			"/terms",
 			"/ambassadors",
