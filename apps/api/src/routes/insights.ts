@@ -7,6 +7,8 @@ import {
 	desc,
 	eq,
 	gte,
+	inArray,
+	insightUserFeedback,
 	isNull,
 	member,
 	websites,
@@ -467,6 +469,34 @@ function getRedis() {
 	}
 }
 
+async function invalidateInsightsCacheForOrg(
+	organizationId: string
+): Promise<void> {
+	const redis = getRedis();
+	if (!redis) {
+		return;
+	}
+	const pattern = `${CACHE_KEY_PREFIX}:${organizationId}:*`;
+	let cursor = "0";
+	try {
+		do {
+			const [nextCursor, keys] = (await redis.scan(
+				cursor,
+				"MATCH",
+				pattern,
+				"COUNT",
+				100
+			)) as [string, string[]];
+			cursor = nextCursor;
+			if (keys.length > 0) {
+				await redis.del(...keys);
+			}
+		} while (cursor !== "0");
+	} catch {
+		// cache best-effort
+	}
+}
+
 export const insights = new Elysia({ prefix: "/v1/insights" })
 	.derive(async ({ request }) => {
 		const session = await auth.api.getSession({ headers: request.headers });
@@ -594,6 +624,64 @@ export const insights = new Elysia({ prefix: "/v1/insights" })
 				limit: t.Optional(t.String()),
 				offset: t.Optional(t.String()),
 				websiteId: t.Optional(t.String()),
+			}),
+		}
+	)
+	.post(
+		"/clear",
+		async ({ body, user, set }) => {
+			const userId = user?.id;
+			if (!userId) {
+				return { success: false, error: "User ID required", deleted: 0 };
+			}
+
+			const { organizationId } = body;
+			mergeWideEvent({ insights_clear_org_id: organizationId });
+
+			const memberships = await db.query.member.findMany({
+				where: eq(member.userId, userId),
+				columns: { organizationId: true },
+			});
+
+			const orgIds = new Set(memberships.map((m) => m.organizationId));
+			if (!orgIds.has(organizationId)) {
+				set.status = 403;
+				return {
+					success: false,
+					error: "Access denied to this organization",
+					deleted: 0,
+				};
+			}
+
+			const idRows = await db
+				.select({ id: analyticsInsights.id })
+				.from(analyticsInsights)
+				.where(eq(analyticsInsights.organizationId, organizationId));
+
+			const ids = idRows.map((r) => r.id);
+
+			if (ids.length > 0) {
+				await db
+					.delete(insightUserFeedback)
+					.where(
+						and(
+							eq(insightUserFeedback.organizationId, organizationId),
+							inArray(insightUserFeedback.insightId, ids)
+						)
+					);
+				await db
+					.delete(analyticsInsights)
+					.where(eq(analyticsInsights.organizationId, organizationId));
+			}
+
+			await invalidateInsightsCacheForOrg(organizationId);
+			mergeWideEvent({ insights_cleared: ids.length });
+
+			return { success: true, deleted: ids.length };
+		},
+		{
+			body: t.Object({
+				organizationId: t.String(),
 			}),
 		}
 	)

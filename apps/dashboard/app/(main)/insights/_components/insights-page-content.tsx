@@ -7,10 +7,13 @@ import {
 	CheckCircleIcon,
 	FunnelIcon,
 	SparkleIcon,
+	TrashIcon,
 	WarningCircleIcon,
 	XIcon,
 } from "@phosphor-icons/react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import type {
 	Insight,
 	InsightSeverity,
@@ -19,6 +22,16 @@ import { useInsightsFeed } from "@/app/(main)/insights/hooks/use-insights-feed";
 import { useInsightsLocalState } from "@/app/(main)/insights/hooks/use-insights-local-state";
 import { PageHeader } from "@/app/(main)/websites/_components/page-header";
 import { useOrganizationsContext } from "@/components/providers/organizations-provider";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -27,6 +40,11 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+	clearInsightsHistory,
+	INSIGHT_QUERY_KEYS,
+} from "@/lib/insight-api";
+import { orpc } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { InsightCard, InsightCardSkeleton } from "./insight-card";
 
@@ -68,6 +86,7 @@ function sortInsights(items: Insight[], mode: SortMode): Insight[] {
 }
 
 export function InsightsPageContent() {
+	const queryClient = useQueryClient();
 	const { activeOrganization, activeOrganizationId } =
 		useOrganizationsContext();
 	const orgId = activeOrganization?.id ?? activeOrganizationId ?? undefined;
@@ -104,6 +123,40 @@ export function InsightsPageContent() {
 	const [sortMode, setSortMode] = useState<SortMode>("priority");
 	const [showDismissed, setShowDismissed] = useState(false);
 	const [expandedId, setExpandedId] = useState<string | null>(null);
+	const [clearDialogOpen, setClearDialogOpen] = useState(false);
+
+	const clearInsightsMutation = useMutation({
+		mutationFn: () => clearInsightsHistory(orgId ?? ""),
+		onSuccess: async (data) => {
+			setClearDialogOpen(false);
+			setExpandedId(null);
+			clearAllDismissedAction();
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: [INSIGHT_QUERY_KEYS.historyInfinite, orgId],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: [INSIGHT_QUERY_KEYS.ai, orgId],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: [INSIGHT_QUERY_KEYS.history, orgId],
+				}),
+				queryClient.invalidateQueries({
+					queryKey: orpc.insights.getVotes.key(),
+				}),
+			]);
+			toast.success(
+				data.deleted === 0
+					? "No stored insights to remove"
+					: `Removed ${data.deleted} insight${data.deleted === 1 ? "" : "s"}`
+			);
+		},
+		onError: (error) => {
+			toast.error(
+				error instanceof Error ? error.message : "Could not clear insights"
+			);
+		},
+	});
 
 	const websites = useMemo(() => {
 		const map = new Map<string, string>();
@@ -198,6 +251,7 @@ export function InsightsPageContent() {
 	const showFilterBar = !isLoading && !isError && insights.length > 0;
 
 	return (
+		<>
 		<div className="h-full overflow-y-auto" ref={scrollRef}>
 			<PageHeader
 				count={isLoading ? undefined : insights.length}
@@ -238,12 +292,22 @@ export function InsightsPageContent() {
 							disabled={busy}
 							onClick={() => refetch()}
 							size="icon"
+							type="button"
 							variant="secondary"
 						>
 							<ArrowClockwiseIcon
 								aria-hidden
 								className={cn("size-4", busy && "animate-spin")}
 							/>
+						</Button>
+						<Button
+							disabled={!orgId || clearInsightsMutation.isPending}
+							onClick={() => setClearDialogOpen(true)}
+							type="button"
+							variant="outline"
+						>
+							<TrashIcon className="size-4" weight="duotone" />
+							Clear all
 						</Button>
 					</div>
 				}
@@ -463,6 +527,37 @@ export function InsightsPageContent() {
 				</>
 			)}
 		</div>
+
+		<AlertDialog onOpenChange={setClearDialogOpen} open={clearDialogOpen}>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle className="text-balance">
+						Clear all insights?
+					</AlertDialogTitle>
+					<AlertDialogDescription className="text-pretty">
+						This removes every stored insight for this organization from the
+						database. Fresh insights will be generated on the next analysis run.
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel type="button">Cancel</AlertDialogCancel>
+					<AlertDialogAction
+						className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						disabled={clearInsightsMutation.isPending || !orgId}
+						onClick={(e) => {
+							e.preventDefault();
+							if (orgId) {
+								clearInsightsMutation.mutate();
+							}
+						}}
+						type="button"
+					>
+						{clearInsightsMutation.isPending ? "Clearing…" : "Clear all"}
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
+		</>
 	);
 }
 

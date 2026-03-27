@@ -75,3 +75,29 @@ export async function fetchInsightsHistoryPage(
 
 	return (await res.json()) as InsightsHistoryPage;
 }
+
+export interface ClearInsightsResponse {
+	success: boolean;
+	deleted: number;
+	error?: string;
+}
+
+export async function clearInsightsHistory(
+	organizationId: string
+): Promise<ClearInsightsResponse> {
+	const res = await fetch(`${API_URL}/v1/insights/clear`, {
+		method: "POST",
+		credentials: "include",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ organizationId }),
+		signal: AbortSignal.timeout(30_000),
+	});
+
+	const data = (await res.json()) as ClearInsightsResponse;
+
+	if (!res.ok) {
+		throw new Error(data.error ?? `Clear insights failed: ${res.status}`);
+	}
+
+	return data;
+}
