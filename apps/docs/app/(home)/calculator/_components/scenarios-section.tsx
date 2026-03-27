@@ -18,7 +18,7 @@ export function ScenariosSection() {
 				</p>
 				<h2 className="mb-3 font-bold text-2xl tracking-tight sm:text-3xl">
 					The numbers across 5 real-world profiles
-				</h2>page
+				</h2>
 				<p className="mx-auto max-w-2xl text-balance text-muted-foreground text-sm">
 					Opportunity cost at realistic bounce and visitor-to-paid
 					assumptions. Your mileage will vary.

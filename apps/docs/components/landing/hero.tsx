@@ -3,6 +3,11 @@
 import { ArrowsOutSimpleIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatLocaleNumber } from "@/lib/format-locale-number";
 import { cn } from "@/lib/utils";
 import { SciFiButton } from "./scifi-btn";
@@ -90,7 +95,37 @@ export default function Hero({
 					<h1 className="text-balance font-bold text-4xl leading-[1.1] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
 						Privacy-first analytics.{" "}
 						<span className="text-muted-foreground">
-							One script, no cookies, no consent banners.
+							One script,{" "}
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										className="cursor-help border-0 bg-transparent p-0 font-inherit text-inherit underline decoration-muted-foreground/70 decoration-dotted underline-offset-[0.15em] hover:decoration-foreground/60"
+										type="button"
+									>
+										no cookies,
+									</button>
+								</TooltipTrigger>
+								<TooltipContent
+									className="max-w-72 text-pretty text-left text-xs leading-relaxed sm:max-w-sm"
+									side="bottom"
+									sideOffset={8}
+								>
+									<span className="block">
+										Cookieless by design. No fingerprints, no consent banner.
+										B2B research on 1.2M+ interactions found 68.9% of cookie
+										banners closed or ignored.{" "}
+										<a
+											className="font-medium underline underline-offset-2 hover:text-primary-foreground/90"
+											href="https://www.advance-metrics.com/en/blog/cookie-behaviour-study/"
+											rel="noopener noreferrer"
+											target="_blank"
+										>
+											Advance Metrics
+										</a>
+									</span>
+								</TooltipContent>
+							</Tooltip>
+							no consent banners.
 						</span>
 					</h1>
 
@@ -100,10 +135,31 @@ export default function Hero({
 						<Link
 							className="text-foreground"
 							href="https://github.com/databuddy-analytics/databuddy"
+							rel="noopener noreferrer"
+							target="_blank"
 						>
 							Open source
 						</Link>
 						.
+					</p>
+
+					<p className="max-w-2xl text-pretty text-muted-foreground text-xs leading-relaxed sm:text-sm">
+						<a
+							className="underline underline-offset-2 hover:text-foreground"
+							href="https://www.advance-metrics.com/en/blog/cookie-behaviour-study/"
+							rel="noopener noreferrer"
+							target="_blank"
+						>
+							Advance Metrics
+						</a>{" "}
+						on real-world banner behavior.{" "}
+						<Link
+							className="underline underline-offset-2 hover:text-foreground"
+							href="/calculator"
+						>
+							Model the opportunity cost
+						</Link>{" "}
+						for your traffic.
 					</p>
 
 					<div className="flex items-center gap-3">

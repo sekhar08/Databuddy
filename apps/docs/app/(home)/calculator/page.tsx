@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Footer } from "@/components/footer";
 import { SITE_URL } from "@/app/util/constants";
 import { CalculatorSection } from "./_components/calculator-section";
+import { CalculatorSources } from "./_components/calculator-sources";
 import { CtaSection } from "./_components/cta-section";
 import { ScenariosSection } from "./_components/scenarios-section";
 
@@ -75,8 +76,10 @@ export default function CalculatorPage() {
 					</h1>
 					<p className="mx-auto max-w-2xl text-balance text-muted-foreground text-sm sm:text-base">
 						Visitors who bounce on the consent screen never enter your
-						funnel. This tool estimates opportunity cost from that lost
-						traffic — not guaranteed revenue.
+						funnel. Large-scale studies report high non-engagement with
+						banners; we default to a conservative 30% and show a 20–40%
+						band so you are not overstating the case. This tool estimates
+						opportunity cost from lost traffic — not guaranteed revenue.
 					</p>
 				</header>
 
@@ -84,6 +87,7 @@ export default function CalculatorPage() {
 					<CalculatorSection />
 					<ScenariosSection />
 					<CtaSection />
+					<CalculatorSources />
 				</div>
 
 				<Footer />

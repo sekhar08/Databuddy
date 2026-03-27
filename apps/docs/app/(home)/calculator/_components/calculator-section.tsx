@@ -95,7 +95,7 @@ export function CalculatorSection() {
 
 								<InputField
 									displayPercent
-									hint="Share of visitors who leave before engaging because of the banner. Research often cites ~20–40% for consent friction."
+									hint="Share who leave before engaging because of the banner. One large B2B sample found 68.9% closed or ignored the banner; we default to 30% so the model stays conservative."
 									id="bounce"
 									label="Banner Bounce Rate"
 									max={0.45}
@@ -248,10 +248,10 @@ export function CalculatorSection() {
 
 			<div className="mt-4 text-center">
 				<p className="text-muted-foreground text-xs text-pretty">
-					Banner friction in the ~{formatPercent(BOUNCE_RANGE_LOW)}–
-					{formatPercent(BOUNCE_RANGE_HIGH)} range is commonly reported (e.g.
-					consent vendors, enterprise analytics). Databuddy needs no
-					cookies, so no banner.
+					The yearly range uses {formatPercent(BOUNCE_RANGE_LOW)}–
+					{formatPercent(BOUNCE_RANGE_HIGH)} bounce — a conservative band vs.
+					studies that find much higher non-engagement (see sources below).
+					Databuddy needs no cookies, so no banner.
 				</p>
 			</div>
 		</section>
