@@ -90,8 +90,8 @@ export function AgentInput() {
 	};
 
 	return (
-		<div className="shrink-0 border-t bg-sidebar/30 backdrop-blur-sm">
-			<div className="mx-auto max-w-4xl p-4">
+		<div className="shrink-0 border-t">
+			<div className="mx-auto max-w-4xl px-4 pt-3 pb-4">
 				{pendingMessages.length > 0 ? (
 					<PendingQueue
 						messages={pendingMessages}
@@ -103,60 +103,71 @@ export function AgentInput() {
 				<div className="relative">
 					<AgentCommandMenu {...agentCommands} />
 
-					<form className="flex gap-2" onSubmit={handleSubmit} ref={formRef}>
-						<div className="relative flex-1">
+					<form onSubmit={handleSubmit} ref={formRef}>
+						<div
+							className={cn(
+								"rounded border border-border bg-background shadow-xs transition-all",
+								"focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
+							)}
+						>
 							<Textarea
 								className={cn(
-									"px-4 text-base",
-									"focus:ring-2 focus:ring-primary/20"
+									"min-h-0 resize-none border-0 bg-transparent px-3 pt-3 pb-0 text-base shadow-none",
+									"focus-visible:border-0 focus-visible:bg-transparent focus-visible:shadow-none focus-visible:ring-0"
 								)}
-								maxRows={4}
+								maxRows={6}
 								minRows={1}
 								onChange={handleChange}
 								onKeyDown={onKeyDown}
-								placeholder="Ask the agent to analyze your data..."
+								placeholder="Ask anything about your analytics..."
 								ref={agentCommands.inputRef}
+								showFocusIndicator={false}
 								value={input}
 							/>
-						</div>
 
-						<div className="flex shrink-0 gap-1.5">
-							{isLoading ? (
-								<Button
-									aria-label="Stop generation"
-									className="size-12"
-									onClick={handleStop}
-									size="icon"
-									type="button"
-									variant="destructive"
-								>
-									<StopIcon className="size-5" weight="fill" />
-								</Button>
-							) : null}
-							<Button
-								aria-label={isLoading ? "Queue message" : "Send message"}
-								className="size-12"
-								disabled={!input.trim()}
-								size="icon"
-								type="submit"
-							>
-								<PaperPlaneRightIcon className="size-5" weight="duotone" />
-							</Button>
+							<div className="flex items-center justify-between rounded-b bg-muted/50 px-3 py-1.5">
+								<div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+									<kbd className="rounded border border-border bg-muted px-1 font-mono text-[10px]">
+										Enter
+									</kbd>
+									<span>send</span>
+									<span className="mx-0.5 text-border">·</span>
+									<kbd className="rounded border border-border bg-muted px-1 font-mono text-[10px]">
+										/
+									</kbd>
+									<span>commands</span>
+								</div>
+
+								<div className="flex items-center gap-1">
+									{isLoading ? (
+										<Button
+											aria-label="Stop generation"
+											className="size-8"
+											onClick={handleStop}
+											size="icon"
+											type="button"
+											variant="ghost"
+										>
+											<StopIcon className="size-4" weight="fill" />
+										</Button>
+									) : null}
+									<Button
+										aria-label={isLoading ? "Queue message" : "Send message"}
+										className="size-8"
+										disabled={!input.trim()}
+										size="icon"
+										type="submit"
+									>
+										<PaperPlaneRightIcon
+											className="size-4"
+											weight={input.trim() ? "fill" : "duotone"}
+										/>
+									</Button>
+								</div>
+							</div>
 						</div>
 					</form>
 				</div>
-
-				<p className="mt-2 text-foreground/40 text-xs">
-					Press{" "}
-					<kbd className="rounded border border-border/50 bg-accent px-1 font-mono text-[10px] text-foreground/70">
-						Enter
-					</kbd>{" "}
-					to send ·{" "}
-					<kbd className="rounded border border-border/50 bg-accent px-1 font-mono text-[10px] text-foreground/70">
-						/
-					</kbd>{" "}
-					for commands
-				</p>
 			</div>
 		</div>
 	);

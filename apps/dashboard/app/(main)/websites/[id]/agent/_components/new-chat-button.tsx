@@ -16,13 +16,12 @@ export function NewChatButton() {
 
 	return (
 		<Button
-			className="gap-1.5"
+			aria-label="New chat"
 			onClick={handleNewChat}
 			size="sm"
-			variant="outline"
+			variant="ghost"
 		>
 			<PlusIcon className="size-4" />
-			<span className="hidden sm:inline">New Chat</span>
 		</Button>
 	);
 }

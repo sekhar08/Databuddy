@@ -4,12 +4,7 @@ import { BrainIcon } from "@phosphor-icons/react";
 import type { UIMessage } from "ai";
 import { useEffect, useState } from "react";
 import { AIComponent } from "@/components/ai-elements/ai-component";
-import {
-	ChainOfThought,
-	ChainOfThoughtContent,
-	ChainOfThoughtHeader,
-	ChainOfThoughtStep,
-} from "@/components/ai-elements/chain-of-thought";
+import { ToolStep } from "@/components/ai-elements/chain-of-thought";
 import {
 	Message,
 	MessageContent,
@@ -23,7 +18,7 @@ import {
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { useChat } from "@/contexts/chat-context";
 import { parseContentSegments } from "@/lib/ai-components";
-import { formatToolLabel, formatToolOutput } from "@/lib/tool-display";
+import { formatToolLabel } from "@/lib/tool-display";
 import { cn } from "@/lib/utils";
 import { useChatStatus } from "./hooks/use-chat-status";
 
@@ -40,17 +35,9 @@ function isToolPart(part: MessagePart): part is ToolMessagePart {
 	return part.type?.startsWith("tool-") ?? false;
 }
 
-function getToolOutput(part: MessagePart): unknown {
-	if (isToolPart(part)) {
-		return part.output;
-	}
-	return undefined;
-}
-
 const TOOL_PREFIX_REGEX = /^tool-/;
 
 function getToolName(part: ToolMessagePart): string {
-	// Type is like "tool-execute_query_builder", extract the tool name
 	return part.type.replace(TOOL_PREFIX_REGEX, "");
 }
 
@@ -93,36 +80,56 @@ function ReasoningMessage({
 	);
 }
 
-function groupConsecutiveToolCalls(parts: MessagePart[]) {
-	const grouped: Array<MessagePart | MessagePart[]> = [];
-	let currentToolGroup: MessagePart[] = [];
+function collectToolGroups(parts: MessagePart[]) {
+	const result: Array<MessagePart | ToolMessagePart[]> = [];
+	let toolBuffer: ToolMessagePart[] = [];
 
 	for (const part of parts) {
-		if (part.type?.includes("tool")) {
-			currentToolGroup.push(part);
+		if (isToolPart(part)) {
+			toolBuffer.push(part);
 		} else {
-			if (currentToolGroup.length > 0) {
-				grouped.push(
-					currentToolGroup.length === 1 ? currentToolGroup[0] : currentToolGroup
-				);
-				currentToolGroup = [];
+			if (toolBuffer.length > 0) {
+				result.push(toolBuffer);
+				toolBuffer = [];
 			}
-			grouped.push(part);
+			result.push(part);
 		}
 	}
 
-	// Don't forget the last group
-	if (currentToolGroup.length > 0) {
-		grouped.push(
-			currentToolGroup.length === 1 ? currentToolGroup[0] : currentToolGroup
-		);
+	if (toolBuffer.length > 0) {
+		result.push(toolBuffer);
 	}
 
-	return grouped;
+	return result;
+}
+
+function renderToolGroup(
+	tools: ToolMessagePart[],
+	key: string,
+	isLastGroup: boolean,
+	isStreaming: boolean
+) {
+	return (
+		<div className="space-y-0 py-1" key={key}>
+			{tools.map((tool, idx) => {
+				const toolName = getToolName(tool);
+				const toolInput = tool.input ?? {};
+				const isLast = idx === tools.length - 1;
+				const isActive = isLastGroup && isStreaming && isLast && !tool.output;
+				return (
+					<ToolStep
+						key={`${key}-${idx}`}
+						label={formatToolLabel(toolName, toolInput)}
+						status={isActive ? "active" : "complete"}
+					/>
+				);
+			})}
+		</div>
+	);
 }
 
 function renderMessagePart(
-	part: MessagePart | MessagePart[],
+	part: MessagePart | ToolMessagePart[],
 	partIndex: number,
 	messageId: string,
 	isLastMessage: boolean,
@@ -134,39 +141,8 @@ function renderMessagePart(
 	const mode =
 		role === "user" || !isCurrentlyStreaming ? "static" : "streaming";
 
-	// Handle grouped tool calls
 	if (Array.isArray(part)) {
-		const toolNames = part.map((p) =>
-			formatToolLabel(
-				getToolName(p as ToolMessagePart),
-				(p as ToolMessagePart).input ?? {}
-			)
-		);
-		const headerText =
-			part.length === 1
-				? toolNames[0]
-				: `${part.length} tools: ${toolNames.slice(0, 2).join(", ")}${toolNames.length > 2 ? "…" : ""}`;
-
-		return (
-			<ChainOfThought className="my-3" defaultOpen key={key}>
-				<ChainOfThoughtHeader>{headerText}</ChainOfThoughtHeader>
-				<ChainOfThoughtContent>
-					{part.map((toolPart, idx) => {
-						const toolName = getToolName(toolPart as ToolMessagePart);
-						const toolInput = (toolPart as ToolMessagePart).input ?? {};
-						return (
-							<ChainOfThoughtStep
-								key={`${key}-tool-${idx}`}
-								label={formatToolLabel(toolName, toolInput)}
-								status="complete"
-							>
-								{formatToolOutput(toolName, getToolOutput(toolPart))}
-							</ChainOfThoughtStep>
-						);
-					})}
-				</ChainOfThoughtContent>
-			</ChainOfThought>
-		);
+		return renderToolGroup(part, key, isLastMessage, isCurrentlyStreaming);
 	}
 
 	if (part.type === "reasoning") {
@@ -185,9 +161,7 @@ function renderMessagePart(
 			return null;
 		}
 
-		// Parse content into ordered segments
 		const { segments } = parseContentSegments(textPart.text);
-
 		if (segments.length === 0) {
 			return null;
 		}
@@ -217,23 +191,17 @@ function renderMessagePart(
 		);
 	}
 
-	if (part.type?.includes("tool")) {
+	if (isToolPart(part)) {
 		const toolName = getToolName(part as ToolMessagePart);
 		const toolInput = (part as ToolMessagePart).input ?? {};
+		const isActive = isCurrentlyStreaming && !(part as ToolMessagePart).output;
 		return (
-			<ChainOfThought className="my-3" defaultOpen key={key}>
-				<ChainOfThoughtHeader>
-					{formatToolLabel(toolName, toolInput)}
-				</ChainOfThoughtHeader>
-				<ChainOfThoughtContent>
-					<ChainOfThoughtStep
-						label={formatToolLabel(toolName, toolInput)}
-						status="complete"
-					>
-						{formatToolOutput(toolName, getToolOutput(part))}
-					</ChainOfThoughtStep>
-				</ChainOfThoughtContent>
-			</ChainOfThought>
+			<div className="py-1" key={key}>
+				<ToolStep
+					label={formatToolLabel(toolName, toolInput)}
+					status={isActive ? "active" : "complete"}
+				/>
+			</div>
 		);
 	}
 
@@ -258,7 +226,7 @@ export function AgentMessages() {
 					isLastMessage && hasError && message.role === "assistant";
 
 				const groupedParts = message.parts
-					? groupConsecutiveToolCalls(message.parts)
+					? collectToolGroups(message.parts)
 					: [];
 
 				return (

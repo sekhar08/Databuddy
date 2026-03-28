@@ -146,24 +146,3 @@ export function filterCommands(query: string): AgentCommand[] {
 	});
 }
 
-export function getToolMessage(toolName: string | null): string | null {
-	if (!toolName) {
-		return null;
-	}
-
-	const messages: Record<string, string> = {
-		analyze_traffic: "Analyzing traffic patterns...",
-		analyze_sources: "Breaking down traffic sources...",
-		analyze_funnel: "Analyzing conversion funnel...",
-		generate_report: "Generating report...",
-		create_chart: "Creating visualization...",
-		get_top_pages: "Fetching top pages...",
-		get_events: "Loading events...",
-		get_sessions: "Loading sessions...",
-		find_anomalies: "Scanning for anomalies...",
-		find_insights: "Finding insights...",
-		compare_periods: "Comparing periods...",
-	};
-
-	return messages[toolName] ?? `Running ${toolName}...`;
-}

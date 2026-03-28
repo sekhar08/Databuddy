@@ -108,6 +108,10 @@ Read [codebase-map.md](./references/codebase-map.md) when you need deeper routin
   - `cd packages/tracker && bun run test:unit`
 - If verification depends on services like Postgres, Redis, ClickHouse, or Redpanda, say so explicitly.
 
+## Pitfalls
+
+- The `:online` model suffix is a **Perplexity-only** convention (e.g. `perplexity/sonar-pro`). Never add `:online` to non-Perplexity models — xAI/Grok models use plain IDs like `x-ai/grok-4.1-fast`.
+
 ## Search Hints
 
 - Use `rg "createRPCContext|appRouter|sessionProcedure" packages/rpc apps/api`

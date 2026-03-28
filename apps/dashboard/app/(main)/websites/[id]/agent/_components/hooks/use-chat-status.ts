@@ -1,7 +1,9 @@
 import type { ChatStatus, UIMessage } from "ai";
 import { useMemo } from "react";
+import { formatToolLabel } from "@/lib/tool-display";
 import type { AgentStatus } from "../agent-atoms";
-import { getToolMessage } from "../agent-commands";
+
+const TOOL_PREFIX_REGEX = /^tool-/;
 
 interface ChatStatusResult {
 	agentStatus: AgentStatus;
@@ -22,6 +24,24 @@ function getTextContent(message: UIMessage): string {
 		)
 		.map((part) => part.text)
 		.join("");
+}
+
+function findActiveToolName(message: UIMessage): string | null {
+	if (!message.parts) {
+		return null;
+	}
+	for (let i = message.parts.length - 1; i >= 0; i--) {
+		const part = message.parts[i];
+		if (part.type?.startsWith("tool-")) {
+			const toolPart = part as { type: string; input?: Record<string, unknown>; output?: unknown };
+			const toolName = part.type.replace(TOOL_PREFIX_REGEX, "");
+			if (!toolPart.output) {
+				return formatToolLabel(toolName, toolPart.input ?? {});
+			}
+			return null;
+		}
+	}
+	return null;
 }
 
 export function useChatStatus(
@@ -51,17 +71,17 @@ export function useChatStatus(
 		}
 
 		const hasTextContent = Boolean(getTextContent(lastMessage).trim());
-		const toolMessage = getToolMessage(null);
+		const activeToolLabel = isLoading ? findActiveToolName(lastMessage) : null;
 
 		let displayMessage: string | null = null;
 		if (!hasTextContent && isLoading) {
-			displayMessage = toolMessage;
+			displayMessage = activeToolLabel;
 		}
 
 		return {
 			agentStatus,
-			currentToolCall: null,
-			toolMessage,
+			currentToolCall: activeToolLabel,
+			toolMessage: activeToolLabel,
 			displayMessage,
 			hasTextContent,
 			isStreaming: isLoading,

@@ -16,7 +16,7 @@ Use this file when the task spans multiple packages or when the right edit locat
   - auth-aware frontend flows
   - query and mutation consumers
 - Agent chat: [`contexts/chat-context.tsx`](/Users/iza/Dev/Databuddy/apps/dashboard/contexts/chat-context.tsx) — `useChat` must start with `messages: []` on server **and** first client paint; restore `getMessagesFromLocal` in `useLayoutEffect` and gate `saveMessagesToLocal` until `hasRestoredFromLocal`, or SSR/hydration will disagree (empty vs persisted thread).
-- Analytics agent X/Twitter: [`apps/api/src/ai/tools/x-search.ts`](/Users/iza/Dev/Databuddy/apps/api/src/ai/tools/x-search.ts) (`x_search`, Grok `x-ai/grok-4.1-fast:online`) vs [`web-search.ts`](/Users/iza/Dev/Databuddy/apps/api/src/ai/tools/web-search.ts) (Perplexity). Prompts in [`analytics.ts` prompts](/Users/iza/Dev/Databuddy/apps/api/src/ai/prompts/analytics.ts) must steer “Twitter sentiment / what people say on X” to **x_search**, not web_search.
+- Analytics agent X/Twitter: [`apps/api/src/ai/tools/x-search.ts`](/Users/iza/Dev/Databuddy/apps/api/src/ai/tools/x-search.ts) (`x_search`, Grok `x-ai/grok-4.1-fast`) vs [`web-search.ts`](/Users/iza/Dev/Databuddy/apps/api/src/ai/tools/web-search.ts) (Perplexity). Prompts in [`analytics.ts` prompts](/Users/iza/Dev/Databuddy/apps/api/src/ai/prompts/analytics.ts) must steer “Twitter sentiment / what people say on X” to **x_search**, not web_search.
 
 ### `apps/api`
 

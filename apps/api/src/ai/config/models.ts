@@ -19,7 +19,7 @@ const modelNames = {
 	analytics: overrideModel ?? "anthropic/claude-sonnet-4.5",
 	advanced: overrideModel ?? "anthropic/claude-sonnet-4.5",
 	perplexity: "perplexity/sonar-pro",
-	grok: "x-ai/grok-4.1-fast:online",
+	grok: "x-ai/grok-4.1-fast",
 } as const;
 
 const baseModels = {

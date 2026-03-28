@@ -9,7 +9,18 @@ import {
 } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
-import { Streamdown } from "streamdown";
+import {
+	Streamdown,
+	TableCopyDropdown,
+	TableDownloadDropdown,
+} from "streamdown";
+import {
+	MdTable,
+	MdTbody,
+	MdTd,
+	MdTh,
+	MdThead,
+} from "@/components/ai-elements/markdown-table";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
 import {
@@ -77,7 +88,7 @@ export const MessageAction = ({
 	children,
 	label,
 	variant = "ghost",
-	size = "icon-sm",
+	size = "icon",
 	...props
 }: MessageActionProps) => {
 	const button = (
@@ -246,7 +257,7 @@ export const MessageBranchPrevious = ({
 			aria-label="Previous branch"
 			disabled={totalBranches <= 1}
 			onClick={goToPrevious}
-			size="icon-sm"
+			size="icon"
 			type="button"
 			variant="ghost"
 			{...props}
@@ -270,7 +281,7 @@ export const MessageBranchNext = ({
 			aria-label="Next branch"
 			disabled={totalBranches <= 1}
 			onClick={goToNext}
-			size="icon-sm"
+			size="icon"
 			type="button"
 			variant="ghost"
 			{...props}
@@ -303,13 +314,33 @@ export const MessageBranchPage = ({
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
+const TABLE_COMPONENTS = {
+	table: ({
+		children,
+		className,
+	}: ComponentProps<"table"> & { node?: unknown }) => (
+		<div data-streamdown="table-wrapper">
+			<div className="flex items-center justify-end gap-1">
+				<TableCopyDropdown />
+				<TableDownloadDropdown />
+			</div>
+			<MdTable className={className}>{children}</MdTable>
+		</div>
+	),
+	thead: MdThead,
+	th: MdTh,
+	tbody: MdTbody,
+	td: MdTd,
+};
+
 export const MessageResponse = memo(
-	({ className, ...props }: MessageResponseProps) => (
+	({ className, components, ...props }: MessageResponseProps) => (
 		<Streamdown
 			className={cn(
 				"size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
 				className
 			)}
+			components={{ ...TABLE_COMPONENTS, ...components }}
 			{...props}
 		/>
 	),
