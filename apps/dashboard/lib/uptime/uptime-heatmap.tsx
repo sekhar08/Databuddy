@@ -41,11 +41,11 @@ export function UptimeHeatmap({
 
 	return (
 		<>
-			<div className="flex items-center justify-between border-b px-4 py-3">
-				<h3 className="font-semibold text-lg text-sidebar-foreground">
+			<div className="flex min-h-10 items-center justify-between gap-3 border-b px-4 py-2.5 sm:px-6">
+				<h3 className="text-balance font-semibold text-lg text-sidebar-foreground">
 					Uptime History
 				</h3>
-				<span className="text-muted-foreground text-sm">
+				<span className="shrink-0 text-muted-foreground text-sm tabular-nums">
 					Last {days} days:{" "}
 					{periodStats.uptime > 0
 						? `${periodStats.uptime.toFixed(2)}%`

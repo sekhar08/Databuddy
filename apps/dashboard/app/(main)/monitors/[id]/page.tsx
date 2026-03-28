@@ -12,11 +12,12 @@ import {
 	PlayIcon,
 	TrashIcon,
 } from "@phosphor-icons/react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { MonitorDetailLoading } from "@/app/(main)/monitors/_components/monitor-detail-loading";
 import { PageHeader } from "@/app/(main)/websites/_components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { MonitorSheet } from "@/components/monitors/monitor-sheet";
@@ -38,7 +39,13 @@ import { useBatchDynamicQuery } from "@/hooks/use-dynamic-query";
 import { orpc } from "@/lib/orpc";
 import { fromNow, localDayjs } from "@/lib/time";
 import { UptimeHeatmap } from "@/lib/uptime/uptime-heatmap";
-import { RecentActivity } from "../../websites/[id]/pulse/_components/recent-activity";
+import {
+	RecentActivity,
+	type RecentActivityCheck,
+	recentActivityCheckKey,
+} from "../../websites/[id]/pulse/_components/recent-activity";
+
+const RECENT_CHECKS_PAGE_SIZE = 50;
 
 const granularityLabels: Record<string, string> = {
 	minute: "Every minute",
@@ -88,6 +95,16 @@ export default function MonitorDetailsPage() {
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 	const [isPausing, setIsPausing] = useState(false);
 	const [isRefreshing, setIsRefreshing] = useState(false);
+	const [recentChecksPage, setRecentChecksPage] = useState(1);
+	const [allRecentChecks, setAllRecentChecks] = useState<RecentActivityCheck[]>(
+		[]
+	);
+	const [recentLoadMoreRef, setRecentLoadMoreRef] =
+		useState<HTMLTableCellElement | null>(null);
+	const [recentScrollContainerRef, setRecentScrollContainerRef] =
+		useState<HTMLDivElement | null>(null);
+	const [isRecentChecksInitialLoad, setIsRecentChecksInitialLoad] =
+		useState(true);
 
 	const {
 		data: rawSchedule,
@@ -128,25 +145,111 @@ export default function MonitorDetailsPage() {
 			: { scheduleId: schedule.id };
 	}, [schedule, scheduleId]);
 
-	// Fetch uptime analytics data
+	// Fetch uptime analytics data (paginated for infinite scroll)
 	const uptimeQueries = useMemo(
 		() => [
 			{
 				id: "uptime-recent-checks",
 				parameters: ["uptime_recent_checks"],
-				limit: 20,
+				limit: RECENT_CHECKS_PAGE_SIZE,
+				page: recentChecksPage,
 			},
 		],
-		[]
+		[recentChecksPage]
 	);
 
 	const {
-		isLoading: isLoadingUptime,
-		getDataForQuery,
+		results: uptimeBatchResults,
+		isFetching: isFetchingUptimeChecks,
+		isPending: isPendingUptimeChecks,
 		refetch: refetchUptimeData,
 	} = useBatchDynamicQuery(queryIdOptions, dateRange, uptimeQueries, {
 		enabled: hasMonitor,
+		placeholderData: keepPreviousData,
 	});
+
+	const pageRecentChecks = useMemo(() => {
+		const row = uptimeBatchResults.find(
+			(r) => r.queryId === "uptime-recent-checks"
+		);
+		if (!row?.success) {
+			return [];
+		}
+		const raw = row.data.uptime_recent_checks;
+		return Array.isArray(raw) ? (raw as RecentActivityCheck[]) : [];
+	}, [uptimeBatchResults]);
+
+	useEffect(() => {
+		setRecentChecksPage(1);
+		setAllRecentChecks([]);
+		setIsRecentChecksInitialLoad(true);
+	}, [dateRange, scheduleId]);
+
+	const recentChecksHasNext =
+		pageRecentChecks.length === RECENT_CHECKS_PAGE_SIZE;
+
+	const handleRecentChecksIntersection = useCallback(
+		(entries: IntersectionObserverEntry[]) => {
+			const [entry] = entries;
+			if (
+				entry?.isIntersecting &&
+				recentChecksHasNext &&
+				!isFetchingUptimeChecks
+			) {
+				setRecentChecksPage((prev) => prev + 1);
+			}
+		},
+		[recentChecksHasNext, isFetchingUptimeChecks]
+	);
+
+	useEffect(() => {
+		if (!(recentLoadMoreRef && recentScrollContainerRef)) {
+			return;
+		}
+
+		const observer = new IntersectionObserver(handleRecentChecksIntersection, {
+			root: recentScrollContainerRef,
+			rootMargin: "300px",
+			threshold: 0.1,
+		});
+
+		observer.observe(recentLoadMoreRef);
+
+		return () => {
+			observer.disconnect();
+		};
+	}, [
+		recentLoadMoreRef,
+		recentScrollContainerRef,
+		handleRecentChecksIntersection,
+	]);
+
+	useEffect(() => {
+		if (pageRecentChecks.length === 0) {
+			if (recentChecksPage === 1 && !isFetchingUptimeChecks) {
+				setAllRecentChecks([]);
+				setIsRecentChecksInitialLoad(false);
+			}
+			return;
+		}
+
+		setAllRecentChecks((prev) => {
+			if (recentChecksPage === 1) {
+				return [...pageRecentChecks];
+			}
+			const seen = new Set(prev.map(recentActivityCheckKey));
+			const merged = [...prev];
+			for (const check of pageRecentChecks) {
+				const key = recentActivityCheckKey(check);
+				if (!seen.has(key)) {
+					seen.add(key);
+					merged.push(check);
+				}
+			}
+			return merged;
+		});
+		setIsRecentChecksInitialLoad(false);
+	}, [pageRecentChecks, recentChecksPage, isFetchingUptimeChecks]);
 
 	const heatmapDateRange = useMemo(
 		() => ({
@@ -179,8 +282,6 @@ export default function MonitorDetailsPage() {
 		enabled: hasMonitor,
 	});
 
-	const recentChecks =
-		getDataForQuery("uptime-recent-checks", "uptime_recent_checks") || [];
 	const heatmapData =
 		getHeatmapData("uptime-heatmap", "uptime_time_series") || [];
 
@@ -247,6 +348,9 @@ export default function MonitorDetailsPage() {
 
 	const handleRefresh = async () => {
 		setIsRefreshing(true);
+		setRecentChecksPage(1);
+		setAllRecentChecks([]);
+		setIsRecentChecksInitialLoad(true);
 		try {
 			await Promise.all([
 				refetchSchedule(),
@@ -294,16 +398,12 @@ export default function MonitorDetailsPage() {
 	};
 
 	if (isLoadingSchedule) {
-		return (
-			<div className="flex h-full items-center justify-center">
-				<div className="text-muted-foreground text-sm">Loading monitor...</div>
-			</div>
-		);
+		return <MonitorDetailLoading />;
 	}
 
 	if (isScheduleError || !schedule) {
 		return (
-			<div className="flex h-full items-center justify-center p-6">
+			<div className="flex min-h-0 flex-1 items-center justify-center p-6">
 				<EmptyState
 					action={{
 						label: "Back to Monitors",
@@ -318,7 +418,7 @@ export default function MonitorDetailsPage() {
 	}
 
 	// Determine current status based on the most recent check
-	const latestCheck = recentChecks[0];
+	const latestCheck = allRecentChecks[0];
 	const currentStatus = latestCheck
 		? latestCheck.status === 1
 			? "up"
@@ -337,25 +437,27 @@ export default function MonitorDetailsPage() {
 		: schedule.name || schedule.url || "Uptime Monitor";
 
 	return (
-		<div className="flex h-full flex-col">
+		<div className="flex min-h-0 flex-1 flex-col">
 			<PageHeader
 				description={schedule.url}
 				icon={<HeartbeatIcon />}
 				right={
 					<>
 						<Button
-							className="mr-2"
 							onClick={() => router.push("/monitors")}
 							size="sm"
+							type="button"
 							variant="ghost"
 						>
 							<ArrowLeftIcon className="mr-2 size-4" />
 							Back
 						</Button>
 						<Button
+							aria-label="Refresh monitor data"
 							disabled={isRefreshing}
 							onClick={handleRefresh}
 							size="icon"
+							type="button"
 							variant="secondary"
 						>
 							<ArrowClockwiseIcon
@@ -367,10 +469,16 @@ export default function MonitorDetailsPage() {
 							disabled={togglePublicMutation.isPending}
 							onClick={handleTogglePublic}
 							size="sm"
+							type="button"
 							variant={schedule.isPublic ? "default" : "outline"}
 						>
 							<GlobeIcon size={16} weight="duotone" />
-							{schedule.isPublic ? "Public" : "Make Public"}
+							<span className="hidden sm:inline">
+								{schedule.isPublic ? "Public" : "Make public"}
+							</span>
+							<span className="sm:hidden">
+								{schedule.isPublic ? "Listed" : "List"}
+							</span>
 						</Button>
 						<Button
 							disabled={
@@ -378,6 +486,7 @@ export default function MonitorDetailsPage() {
 							}
 							onClick={handleTogglePause}
 							size="sm"
+							type="button"
 							variant="outline"
 						>
 							{schedule.isPaused ? (
@@ -392,33 +501,41 @@ export default function MonitorDetailsPage() {
 								</>
 							)}
 						</Button>
-						<Button onClick={handleEditMonitor} size="sm" variant="outline">
+						<Button
+							aria-label="Configure monitor"
+							onClick={handleEditMonitor}
+							size="sm"
+							type="button"
+							variant="outline"
+						>
 							<PencilIcon size={16} weight="duotone" />
-							Configure
+							<span className="hidden sm:inline">Configure</span>
 						</Button>
 						<Button
+							aria-label="Delete monitor"
 							disabled={deleteMutation.isPending}
 							onClick={() => setIsDeleteDialogOpen(true)}
 							size="sm"
+							type="button"
 							variant="outline"
 						>
 							<TrashIcon size={16} weight="duotone" />
-							Delete
+							<span className="hidden sm:inline">Delete</span>
 						</Button>
 					</>
 				}
 				title={displayName}
 			/>
 
-			<div className="flex-1 overflow-y-auto">
+			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 				{schedule.isPublic && statusPageUrl ? (
-					<div className="flex h-10 items-center justify-between border-b bg-emerald-500/5 px-4 py-2.5 sm:px-6">
+					<div className="flex h-10 shrink-0 items-center justify-between border-b bg-emerald-500/5 px-4 py-2.5 sm:px-6">
 						<div className="flex items-center gap-2 overflow-hidden">
 							<GlobeIcon
 								className="size-4 shrink-0 text-emerald-600"
 								weight="duotone"
 							/>
-							<span className="truncate text-muted-foreground text-xs">
+							<span className="truncate text-pretty text-muted-foreground text-xs">
 								Visible on{" "}
 								<Link
 									className="font-medium text-foreground hover:underline"
@@ -457,62 +574,91 @@ export default function MonitorDetailsPage() {
 					</div>
 				) : null}
 
-				<div className="border-b bg-card px-6 py-4">
-					<div className="flex flex-wrap items-center gap-4 text-sm">
-						<div className="flex items-center gap-2">
-							<span className="text-muted-foreground">Status:</span>
-							<Badge
-								className={
-									!schedule.isPaused && currentStatus === "up"
-										? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
-										: ""
-								}
-								variant={
-									schedule.isPaused
-										? "secondary"
+				<div className="shrink-0 border-b bg-card px-4 py-4 sm:px-6">
+					<dl className="grid min-h-[5.25rem] gap-4 sm:grid-cols-2 lg:grid-cols-4">
+						<div className="min-w-0">
+							<dt className="text-balance text-muted-foreground text-xs">
+								Status
+							</dt>
+							<dd className="mt-1.5">
+								<Badge
+									className={
+										!schedule.isPaused && currentStatus === "up"
+											? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+											: ""
+									}
+									variant={
+										schedule.isPaused
+											? "secondary"
+											: currentStatus === "down"
+												? "destructive"
+												: "default"
+									}
+								>
+									{schedule.isPaused
+										? "Paused"
 										: currentStatus === "down"
-											? "destructive"
-											: "default"
-								}
-							>
-								{schedule.isPaused
-									? "Paused"
-									: currentStatus === "down"
-										? "Outage"
-										: currentStatus === "up"
-											? "Operational"
-											: "Unknown"}
-							</Badge>
+											? "Outage"
+											: currentStatus === "up"
+												? "Operational"
+												: "Unknown"}
+								</Badge>
+							</dd>
 						</div>
-						<div className="flex items-center gap-2">
-							<span className="text-muted-foreground">Frequency:</span>
-							<span>
+						<div className="min-w-0">
+							<dt className="text-balance text-muted-foreground text-xs">
+								Check frequency
+							</dt>
+							<dd className="mt-1.5 text-pretty font-medium text-foreground text-sm">
 								{granularityLabels[schedule.granularity] ||
 									schedule.granularity}
-							</span>
+							</dd>
 						</div>
-						{latestCheck && (
-							<div className="flex items-center gap-2">
-								<span className="text-muted-foreground">Last checked:</span>
-								<span>{fromNow(latestCheck.timestamp)}</span>
+						{latestCheck ? (
+							<div className="min-w-0">
+								<dt className="text-balance text-muted-foreground text-xs">
+									Last check
+								</dt>
+								<dd className="mt-1.5 text-pretty font-medium text-foreground text-sm tabular-nums">
+									{fromNow(latestCheck.timestamp)}
+								</dd>
+							</div>
+						) : (
+							<div className="min-w-0">
+								<dt className="text-balance text-muted-foreground text-xs">
+									Last check
+								</dt>
+								<dd className="mt-1.5 text-muted-foreground text-sm">
+									Waiting for data
+								</dd>
 							</div>
 						)}
-						{schedule.websiteId && schedule.website && (
-							<div className="flex items-center gap-2">
-								<span className="text-muted-foreground">Website:</span>
-								<Link
-									className="flex items-center gap-1 text-primary hover:underline"
-									href={`/websites/${schedule.websiteId}/pulse`}
-								>
-									<GlobeIcon />
-									{schedule.website.name || schedule.website.domain}
-								</Link>
+						{schedule.websiteId && schedule.website ? (
+							<div className="min-w-0 sm:col-span-2 lg:col-span-1">
+								<dt className="text-balance text-muted-foreground text-xs">
+									Website
+								</dt>
+								<dd className="mt-1.5 min-w-0">
+									<Link
+										className="inline-flex max-w-full items-center gap-1.5 text-pretty font-medium text-primary text-sm hover:underline"
+										href={`/websites/${schedule.websiteId}/pulse`}
+									>
+										<GlobeIcon
+											aria-hidden
+											className="size-4 shrink-0"
+											weight="duotone"
+										/>
+										<span className="truncate">
+											{schedule.website.name || schedule.website.domain}
+										</span>
+									</Link>
+								</dd>
 							</div>
-						)}
-					</div>
+						) : null}
+					</dl>
 				</div>
 
-				<div className="border-b bg-sidebar">
+				<div className="shrink-0 border-b bg-sidebar">
 					<UptimeHeatmap
 						data={heatmapData}
 						days={90}
@@ -520,8 +666,27 @@ export default function MonitorDetailsPage() {
 					/>
 				</div>
 
-				<div className="bg-sidebar">
-					<RecentActivity checks={recentChecks} isLoading={isLoadingUptime} />
+				<div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-sidebar">
+					<div
+						className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
+						ref={setRecentScrollContainerRef}
+					>
+						<RecentActivity
+							checks={allRecentChecks}
+							hasMore={recentChecksHasNext}
+							isLoading={
+								isRecentChecksInitialLoad &&
+								allRecentChecks.length === 0 &&
+								isPendingUptimeChecks
+							}
+							isLoadingMore={
+								!isRecentChecksInitialLoad &&
+								allRecentChecks.length > 0 &&
+								isFetchingUptimeChecks
+							}
+							loadMoreRef={setRecentLoadMoreRef}
+						/>
+					</div>
 				</div>
 			</div>
 

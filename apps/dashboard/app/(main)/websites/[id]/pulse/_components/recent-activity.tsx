@@ -2,10 +2,13 @@
 
 import {
 	CheckCircleIcon,
+	ClockCounterClockwiseIcon,
 	WarningCircleIcon,
 	XCircleIcon,
 } from "@phosphor-icons/react";
+import type { RefCallback } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
 	TableBody,
@@ -17,7 +20,7 @@ import {
 import { formatLocalTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
-interface Check {
+export interface RecentActivityCheck {
 	timestamp: string;
 	status: number; // 1 = up, 0 = down, 2 = pending
 	total_ms: number;
@@ -28,112 +31,220 @@ interface Check {
 }
 
 interface RecentActivityProps {
-	checks: Check[];
+	checks: RecentActivityCheck[];
 	isLoading?: boolean;
+	hasMore?: boolean;
+	isLoadingMore?: boolean;
+	loadMoreRef?: RefCallback<HTMLTableCellElement | null>;
 }
 
-export function RecentActivity({ checks, isLoading }: RecentActivityProps) {
+export function recentActivityCheckKey(check: RecentActivityCheck) {
+	return `${check.timestamp}-${check.probe_region}-${check.probe_ip ?? ""}-${check.http_code}-${check.total_ms}`;
+}
+
+function LoadMoreSkeletonRow() {
+	return (
+		<TableRow className="h-[52px] border-b hover:bg-transparent">
+			<TableCell className="py-2.5">
+				<div className="flex items-center gap-2.5">
+					<Skeleton className="size-4 shrink-0 rounded" />
+					<Skeleton className="h-4 w-28 rounded" />
+				</div>
+			</TableCell>
+			<TableCell className="py-2.5">
+				<Skeleton className="mx-auto h-4 w-28 rounded" />
+			</TableCell>
+			<TableCell className="py-2.5">
+				<Skeleton className="mx-auto h-5 w-16 rounded" />
+			</TableCell>
+			<TableCell className="py-2.5">
+				<Skeleton className="mx-auto h-4 w-24 rounded" />
+			</TableCell>
+			<TableCell className="py-2.5">
+				<Skeleton className="mx-auto h-4 w-14 rounded" />
+			</TableCell>
+		</TableRow>
+	);
+}
+
+function InitialTableSkeleton({ rows }: { rows: number }) {
+	return (
+		<div className="bg-card">
+			<div className="border-b bg-card px-3">
+				<div className="flex h-10 items-center gap-6 border-transparent border-b">
+					<Skeleton className="h-4 w-14 rounded" />
+					<Skeleton className="h-4 w-12 rounded" />
+					<Skeleton className="h-4 w-16 rounded" />
+					<Skeleton className="h-4 w-8 rounded" />
+					<Skeleton className="h-4 w-16 rounded" />
+				</div>
+			</div>
+			<div>
+				{Array.from({ length: rows }).map((_, i) => (
+					<LoadMoreSkeletonRow key={`sk-${i}`} />
+				))}
+			</div>
+		</div>
+	);
+}
+
+export function RecentActivityTableSkeleton({ rows = 8 }: { rows?: number }) {
+	return <InitialTableSkeleton rows={rows} />;
+}
+
+const RECENT_ACTIVITY_HEADER_CLASSES =
+	"flex min-h-[4.75rem] flex-col justify-center border-b bg-sidebar px-4 py-3 sm:px-6";
+
+export function RecentActivity({
+	checks,
+	isLoading,
+	hasMore = false,
+	isLoadingMore = false,
+	loadMoreRef,
+}: RecentActivityProps) {
+	const countLabel =
+		checks.length > 0
+			? `${checks.length} check${checks.length === 1 ? "" : "s"}`
+			: null;
+
 	if (isLoading) {
 		return (
-			<>
-				<div className="border-b px-4 py-3">
-					<h3 className="font-semibold text-lg text-sidebar-foreground">
-						Recent Activity
-					</h3>
+			<section aria-busy="true" aria-label="Loading recent activity">
+				<div className={RECENT_ACTIVITY_HEADER_CLASSES}>
+					<Skeleton className="h-5 w-44 rounded" />
+					<Skeleton className="mt-2 h-3 w-56 max-w-full rounded sm:mt-1.5" />
 				</div>
-				<div className="p-4">
-					<div className="space-y-4">
-						{[...new Array(5)].map((_, i) => (
-							<div
-								className="h-10 w-full animate-pulse rounded bg-muted"
-								key={i}
-							/>
-						))}
-					</div>
-				</div>
-			</>
+				<InitialTableSkeleton rows={8} />
+			</section>
 		);
 	}
 
 	return (
-		<>
-			<div className="border-b px-4 py-3">
-				<h3 className="font-semibold text-lg text-sidebar-foreground">
-					Recent Activity
-				</h3>
+		<section aria-label="Recent activity">
+			<div className={RECENT_ACTIVITY_HEADER_CLASSES}>
+				<div className="flex flex-wrap items-end justify-between gap-2">
+					<div>
+						<h3 className="text-balance font-semibold text-lg text-sidebar-foreground">
+							Recent activity
+						</h3>
+						{countLabel ? (
+							<p className="mt-0.5 text-pretty text-muted-foreground text-xs">
+								{countLabel} in the selected range
+							</p>
+						) : (
+							<p className="mt-0.5 text-pretty text-muted-foreground text-xs">
+								Per probe, newest first
+							</p>
+						)}
+					</div>
+				</div>
 			</div>
 			<div className="p-0">
 				<Table>
-					<TableHeader>
-						<TableRow className="hover:bg-transparent">
-							<TableHead className="text-balance text-left">Status</TableHead>
-							<TableHead className="text-balance text-center">Time</TableHead>
-							<TableHead className="text-balance text-center">Region</TableHead>
-							<TableHead className="text-balance text-center">IP</TableHead>
-							<TableHead className="text-balance text-center">
+					<TableHeader className="sticky top-0 z-10 bg-card shadow-[inset_0_-1px_0_0_var(--border)]">
+						<TableRow className="border-b-0 hover:bg-transparent">
+							<TableHead className="text-balance text-left text-xs sm:text-sm">
+								Status
+							</TableHead>
+							<TableHead className="text-balance text-center text-xs sm:text-sm">
+								Time
+							</TableHead>
+							<TableHead className="hidden text-balance text-center text-xs sm:table-cell sm:text-sm">
+								Region
+							</TableHead>
+							<TableHead className="hidden text-balance text-center text-xs md:table-cell md:text-sm">
+								IP
+							</TableHead>
+							<TableHead className="text-balance text-center text-xs sm:text-sm">
 								Duration
 							</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
 						{checks.length === 0 ? (
-							<TableRow>
-								<TableCell className="h-24 text-center" colSpan={5}>
-									No recent checks found.
+							<TableRow className="hover:bg-transparent">
+								<TableCell className="h-auto py-14 text-center" colSpan={5}>
+									<div className="mx-auto flex max-w-sm flex-col items-center gap-3 px-4">
+										<div className="flex size-11 items-center justify-center rounded border bg-muted/50 text-muted-foreground">
+											<ClockCounterClockwiseIcon
+												aria-hidden
+												size={22}
+												weight="duotone"
+											/>
+										</div>
+										<div className="space-y-1">
+											<p className="text-balance font-medium text-foreground text-sm">
+												No checks in this range
+											</p>
+											<p className="text-pretty text-muted-foreground text-xs leading-relaxed">
+												Widen the date filter or wait for the next scheduled run
+												to see results here.
+											</p>
+										</div>
+									</div>
 								</TableCell>
 							</TableRow>
 						) : (
-							checks.map((check, i) => (
-								<TableRow key={`${check.timestamp}-${i}`}>
-									<TableCell className="items-left flex text-balance text-left">
-										<div className="flex items-center justify-center gap-2">
+							checks.map((check) => (
+								<TableRow key={recentActivityCheckKey(check)}>
+									<TableCell className="max-w-[min(100%,14rem)] align-middle">
+										<div className="flex items-start gap-2.5 sm:items-center">
 											{check.status === 1 ? (
 												<CheckCircleIcon
-													className="text-emerald-500"
+													aria-hidden
+													className="mt-0.5 shrink-0 text-emerald-500 sm:mt-0"
 													size={18}
 													weight="fill"
 												/>
 											) : check.status === 2 ? (
 												<WarningCircleIcon
-													className="text-amber-500"
+													aria-hidden
+													className="mt-0.5 shrink-0 text-amber-500 sm:mt-0"
 													size={18}
 													weight="fill"
 												/>
 											) : (
 												<XCircleIcon
-													className="text-red-500"
+													aria-hidden
+													className="mt-0.5 shrink-0 text-red-500 sm:mt-0"
 													size={18}
 													weight="fill"
 												/>
 											)}
-											<div className="flex flex-col">
-												<span className="font-medium text-sm">
+											<div className="flex min-w-0 flex-col gap-0.5">
+												<span className="font-medium text-sm leading-tight">
 													{check.status === 1
 														? "Operational"
 														: check.status === 2
 															? "Pending"
 															: "Downtime"}
 												</span>
-												{check.status !== 1 && check.error && (
-													<span className="max-w-[150px] truncate text-destructive text-xs">
+												{check.status !== 1 && check.error ? (
+													<span
+														className="line-clamp-2 text-pretty text-destructive text-xs leading-snug"
+														title={check.error}
+													>
 														{check.error}
 													</span>
-												)}
+												) : null}
 											</div>
 										</div>
 									</TableCell>
-									<TableCell className="text-center text-muted-foreground text-xs">
+									<TableCell className="text-center align-middle text-muted-foreground text-xs tabular-nums">
 										{formatLocalTime(check.timestamp, "MMM D, HH:mm:ss")}
 									</TableCell>
-									<TableCell className="text-center text-muted-foreground text-xs">
-										<Badge className="font-mono text-[10px]" variant="outline">
+									<TableCell className="hidden text-center align-middle sm:table-cell">
+										<Badge
+											className="font-mono text-[10px] tabular-nums"
+											variant="outline"
+										>
 											{check.probe_region || "Global"}
 										</Badge>
 									</TableCell>
-									<TableCell className="text-center font-mono text-muted-foreground text-xs">
+									<TableCell className="hidden text-center align-middle font-mono text-muted-foreground text-xs tabular-nums md:table-cell">
 										{check.probe_ip || "—"}
 									</TableCell>
-									<TableCell className="text-center font-mono text-xs">
+									<TableCell className="text-center align-middle font-mono text-xs tabular-nums">
 										<span
 											className={cn(
 												check.total_ms < 200 && "text-emerald-600",
@@ -149,9 +260,26 @@ export function RecentActivity({ checks, isLoading }: RecentActivityProps) {
 								</TableRow>
 							))
 						)}
+						{hasMore && loadMoreRef ? (
+							<>
+								<TableRow className="hover:bg-transparent">
+									<TableCell
+										className="h-px p-0"
+										colSpan={5}
+										ref={loadMoreRef}
+									/>
+								</TableRow>
+								{isLoadingMore ? (
+									<>
+										<LoadMoreSkeletonRow />
+										<LoadMoreSkeletonRow />
+									</>
+								) : null}
+							</>
+						) : null}
 					</TableBody>
 				</Table>
 			</div>
-		</>
+		</section>
 	);
 }

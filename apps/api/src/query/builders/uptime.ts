@@ -121,9 +121,11 @@ export const UptimeBuilders: Record<string, SimpleQueryConfig> = {
 			endDate: string,
 			_filters?: Filter[],
 			_granularity?: string,
-			_limit?: number
+			_limit?: number,
+			_offset?: number
 		) => {
 			const limit = _limit ?? 50;
+			const offset = _offset ?? 0;
 			return {
 				sql: `
 					SELECT 
@@ -144,8 +146,9 @@ export const UptimeBuilders: Record<string, SimpleQueryConfig> = {
 						AND timestamp <= toDateTime(concat({endDate:String}, ' 23:59:59'))
 					ORDER BY timestamp DESC
 					LIMIT {limit:UInt32}
+					OFFSET {offset:UInt32}
 				`,
-				params: { websiteId, startDate, endDate, limit },
+				params: { websiteId, startDate, endDate, limit, offset },
 			};
 		},
 		timeField: "timestamp",
