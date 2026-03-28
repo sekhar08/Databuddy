@@ -19,6 +19,7 @@ const modelNames = {
 	analytics: overrideModel ?? "anthropic/claude-sonnet-4.5",
 	advanced: overrideModel ?? "anthropic/claude-sonnet-4.5",
 	perplexity: "perplexity/sonar-pro",
+	grok: "x-ai/grok-4.1-fast:online",
 } as const;
 
 const baseModels = {
@@ -27,6 +28,7 @@ const baseModels = {
 	analyticsMcp: gateway.chat(modelNames.analytics),
 	advanced: gateway.chat(modelNames.advanced),
 	perplexity: gateway.chat(modelNames.perplexity),
+	grok: gateway.chat(modelNames.grok),
 } as const;
 
 export const models = {
@@ -35,6 +37,7 @@ export const models = {
 	analyticsMcp: baseModels.analyticsMcp,
 	advanced: baseModels.advanced,
 	perplexity: baseModels.perplexity,
+	grok: baseModels.grok,
 } as const;
 
 export type ModelKey = keyof typeof models;

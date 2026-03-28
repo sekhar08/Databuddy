@@ -19,6 +19,8 @@ const UPTIME_TABLE = "uptime.uptime_monitor";
 const dailyUptimeSchema = z.object({
 	date: z.string(),
 	uptime_percentage: z.number(),
+	avg_response_time: z.number().optional(),
+	p95_response_time: z.number().optional(),
 });
 
 const monitorSchema = z.object({
@@ -133,10 +135,17 @@ export const statusPageRouter = {
 						: undefined;
 
 					const [dailyData, recentCheck] = await Promise.all([
-						chQuery<{ date: string; uptime_percentage: number }>(
+						chQuery<{
+							date: string;
+							uptime_percentage: number;
+							avg_response_time: number;
+							p95_response_time: number;
+						}>(
 							`SELECT
 							toDate(timestamp) as date,
-							if((countIf(status = 1) + countIf(status = 0)) = 0, 0, round((countIf(status = 1) / (countIf(status = 1) + countIf(status = 0))) * 100, 2)) as uptime_percentage
+							if((countIf(status = 1) + countIf(status = 0)) = 0, 0, round((countIf(status = 1) / (countIf(status = 1) + countIf(status = 0))) * 100, 2)) as uptime_percentage,
+							round(avg(total_ms), 2) as avg_response_time,
+							round(quantile(0.95)(total_ms), 2) as p95_response_time
 						FROM ${UPTIME_TABLE}
 						WHERE
 							site_id = {siteId:String}
@@ -181,6 +190,8 @@ export const statusPageRouter = {
 						dailyData: dailyData.map((d) => ({
 							date: String(d.date),
 							uptime_percentage: d.uptime_percentage,
+							avg_response_time: d.avg_response_time,
+							p95_response_time: d.p95_response_time,
 						})),
 						lastCheckedAt: latestCheck?.timestamp ?? null,
 					};

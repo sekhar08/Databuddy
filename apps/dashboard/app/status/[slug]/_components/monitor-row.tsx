@@ -6,17 +6,21 @@ import {
 	XCircleIcon,
 } from "@phosphor-icons/react";
 import { useMemo } from "react";
+import { formatDateOnly, fromNow } from "@/lib/time";
 import { buildUptimeHeatmapDays } from "@/lib/uptime/heatmap-days";
 import { UptimeHeatmapStrip } from "@/lib/uptime/heatmap-strip";
-import { formatDateOnly, fromNow } from "@/lib/time";
+import { LatencyChart } from "@/lib/uptime/latency-chart";
 import { cn } from "@/lib/utils";
 
 interface DailyData {
 	date: string;
 	uptime_percentage: number;
+	avg_response_time?: number;
+	p95_response_time?: number;
 }
 
 interface MonitorRowProps {
+	id: string;
 	name: string;
 	domain: string;
 	currentStatus: "up" | "down" | "unknown";
@@ -42,6 +46,7 @@ const STATUS_ICON = {
 } as const;
 
 export function MonitorRow({
+	id,
 	name,
 	domain,
 	currentStatus,
@@ -51,13 +56,21 @@ export function MonitorRow({
 }: MonitorRowProps) {
 	const heatmapData = useMemo(
 		() => buildUptimeHeatmapDays(dailyData, DAYS),
-		[dailyData],
+		[dailyData]
+	);
+
+	const hasLatencyData = useMemo(
+		() =>
+			dailyData.some(
+				(d) => d.avg_response_time != null || d.p95_response_time != null
+			),
+		[dailyData]
 	);
 
 	const statusConfig = STATUS_ICON[currentStatus];
 
 	return (
-		<div className="rounded border bg-card">
+		<div className="overflow-hidden rounded border bg-card">
 			<div className="flex items-center justify-between px-4 pt-4 pb-3">
 				<div className="flex items-center gap-2.5 overflow-hidden">
 					<statusConfig.Icon
@@ -95,6 +108,10 @@ export function MonitorRow({
 					<span>Today</span>
 				</div>
 			</div>
+
+			{hasLatencyData && (
+				<LatencyChart data={dailyData} storageKey={`status-latency-${id}`} />
+			)}
 		</div>
 	);
 }

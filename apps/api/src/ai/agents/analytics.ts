@@ -13,6 +13,7 @@ import { createLinksTools } from "../tools/links";
 import { createMemoryTools } from "../tools/memory";
 import { createProfileTools } from "../tools/profiles";
 import { webSearchTool } from "../tools/web-search";
+import { xSearchTool } from "../tools/x-search";
 import type { AgentConfig, AgentContext } from "./types";
 
 function createTools() {
@@ -22,6 +23,7 @@ function createTools() {
 		execute_query_builder: executeQueryBuilderTool,
 		execute_sql_query: executeSqlQueryTool,
 		web_search: webSearchTool,
+		x_search: xSearchTool,
 		...createMemoryTools(),
 		...createProfileTools(),
 		...createFunnelTools(),

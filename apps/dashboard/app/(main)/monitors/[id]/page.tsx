@@ -38,6 +38,7 @@ import { useDateFilters } from "@/hooks/use-date-filters";
 import { useBatchDynamicQuery } from "@/hooks/use-dynamic-query";
 import { orpc } from "@/lib/orpc";
 import { fromNow, localDayjs } from "@/lib/time";
+import { LatencyChart } from "@/lib/uptime/latency-chart";
 import { UptimeHeatmap } from "@/lib/uptime/uptime-heatmap";
 import {
 	RecentActivity,
@@ -285,6 +286,42 @@ export default function MonitorDetailsPage() {
 	const heatmapData =
 		getHeatmapData("uptime-heatmap", "uptime_time_series") || [];
 
+	const latencyDateRange = useMemo(() => {
+		const days = localDayjs(dateRange.end_date).diff(
+			localDayjs(dateRange.start_date),
+			"day"
+		);
+		const granularity: "hourly" | "daily" = days <= 7 ? "hourly" : "daily";
+		return {
+			start_date: dateRange.start_date,
+			end_date: dateRange.end_date,
+			granularity,
+		};
+	}, [dateRange]);
+
+	const latencyQueries = useMemo(
+		() => [
+			{
+				id: "uptime-latency",
+				parameters: ["uptime_response_time_trends"],
+			},
+		],
+		[]
+	);
+
+	const {
+		getDataForQuery: getLatencyData,
+		isLoading: isLoadingLatency,
+		refetch: refetchLatencyData,
+	} = useBatchDynamicQuery(queryIdOptions, latencyDateRange, latencyQueries, {
+		enabled: hasMonitor,
+	});
+
+	const latencyData = getLatencyData(
+		"uptime-latency",
+		"uptime_response_time_trends"
+	);
+
 	const handleEditMonitor = () => {
 		if (schedule) {
 			setEditingSchedule({
@@ -356,6 +393,7 @@ export default function MonitorDetailsPage() {
 				refetchSchedule(),
 				refetchUptimeData(),
 				refetchHeatmapData(),
+				refetchLatencyData(),
 			]);
 		} catch {
 			// Error handled by individual refetch handlers
@@ -658,15 +696,20 @@ export default function MonitorDetailsPage() {
 					</dl>
 				</div>
 
-				<div className="shrink-0 border-b bg-sidebar">
+				<div className="shrink-0 bg-sidebar">
 					<UptimeHeatmap
 						data={heatmapData}
 						days={90}
 						isLoading={isLoadingHeatmap}
 					/>
+					<LatencyChart
+						data={latencyData}
+						isLoading={isLoadingLatency}
+						storageKey={`monitor-latency-${scheduleId}`}
+					/>
 				</div>
 
-				<div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-sidebar">
+				<div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t bg-sidebar">
 					<div
 						className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
 						ref={setRecentScrollContainerRef}

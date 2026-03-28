@@ -10,6 +10,7 @@ import { getTopPagesTool } from "../tools/get-top-pages";
 import { createGoalTools } from "../tools/goals";
 import { createLinksTools } from "../tools/links";
 import { createMemoryTools } from "../tools/memory";
+import { xSearchTool } from "../tools/x-search";
 import type { AgentConfig, AgentContext } from "./types";
 
 function createTools() {
@@ -17,6 +18,7 @@ function createTools() {
 		get_top_pages: getTopPagesTool,
 		execute_query_builder: executeQueryBuilderTool,
 		execute_sql_query: executeSqlQueryTool,
+		x_search: xSearchTool,
 		...createMemoryTools(),
 		...createFunnelTools(),
 		...createGoalTools(),

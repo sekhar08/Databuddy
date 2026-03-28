@@ -72,6 +72,7 @@ export default async function StatusPage({ params }: StatusPageProps) {
 						currentStatus={monitor.currentStatus}
 						dailyData={monitor.dailyData}
 						domain={monitor.domain}
+						id={monitor.id}
 						key={monitor.id}
 						lastCheckedAt={monitor.lastCheckedAt}
 						name={monitor.name}
