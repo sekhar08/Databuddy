@@ -1,43 +1,48 @@
 import { ArrowRightIcon, CheckIcon } from "@phosphor-icons/react/ssr";
 import Link from "next/link";
+import { CompetitorBrandAvatar } from "@/components/compare/competitor-brand-avatar";
 import type { ComparisonData } from "@/lib/comparison-config";
 
 export function CompetitorCard({
-	slug,
 	data,
+	href,
+	headline,
+	ctaLabel,
 }: {
-	slug: string;
 	data: ComparisonData;
+	href?: string;
+	headline?: string;
+	ctaLabel?: string;
 }) {
 	const { competitor, features } = data;
+	const cardHref = href ?? `/compare/${data.competitor.slug}`;
 	const advantages = features.filter((f) => f.databuddy && !f.competitor);
 
 	return (
 		<Link
 			className="group block rounded border border-border bg-card/50 p-6 backdrop-blur-sm transition-colors hover:border-border/80 hover:bg-card/70"
-			href={`/compare/${slug}`}
+			href={cardHref}
 		>
 			<div className="mb-4 flex items-start justify-between">
 				<div className="flex-1">
 					<h3 className="mb-1 font-semibold text-foreground text-lg">
-						vs {competitor.name}
+						{headline ?? `vs ${competitor.name}`}
 					</h3>
 					<p className="text-pretty text-muted-foreground text-sm">
 						{competitor.tagline}
 					</p>
 				</div>
-				<div
-					className="flex size-10 shrink-0 items-center justify-center rounded font-bold text-sm text-white"
-					style={{ backgroundColor: competitor.color }}
-				>
-					{competitor.name.charAt(0)}
-				</div>
+				<CompetitorBrandAvatar
+					color={competitor.color}
+					name={competitor.name}
+					slug={competitor.slug}
+				/>
 			</div>
 
 			<div className="mb-5 flex items-center justify-between border-border/50 border-b pb-4 text-sm">
 				<div className="flex flex-col">
 					<span className="text-muted-foreground text-xs">Their price</span>
-					<span className="font-medium" style={{ color: competitor.color }}>
+					<span className="font-medium text-foreground">
 						{competitor.pricing.starting}
 					</span>
 				</div>
@@ -67,7 +72,7 @@ export function CompetitorCard({
 			</div>
 
 			<div className="flex items-center justify-between rounded border border-border/50 bg-muted/20 px-4 py-2.5 font-medium text-foreground text-sm transition-colors group-hover:bg-muted/40">
-				<span>View comparison</span>
+				<span>{ctaLabel ?? "View comparison"}</span>
 				<ArrowRightIcon
 					className="size-3.5 transition-transform group-hover:translate-x-0.5"
 					weight="fill"

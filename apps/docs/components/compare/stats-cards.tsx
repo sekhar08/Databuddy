@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CompetitorBrandAvatar } from "@/components/compare/competitor-brand-avatar";
 import { SciFiButton } from "@/components/landing/scifi-btn";
 import { Badge } from "@/components/ui/badge";
 import type { CompetitorInfo } from "@/lib/comparison-config";
@@ -61,28 +62,24 @@ export function StatsCards({
 			<div className="rounded border border-border bg-card/50 p-5 backdrop-blur-sm">
 				<div className="mb-4 flex items-center justify-between">
 					<div>
-						<h3
-							className="font-semibold text-lg"
-							style={{ color: competitor.color }}
-						>
+						<h3 className="font-semibold text-foreground text-lg">
 							{competitor.name}
 						</h3>
 						<p className="text-muted-foreground text-xs">
 							{competitor.tagline}
 						</p>
 					</div>
-					<div
-						className="flex size-10 items-center justify-center rounded font-bold text-sm text-white"
-						style={{ backgroundColor: competitor.color }}
-					>
-						{competitor.name.charAt(0)}
-					</div>
+					<CompetitorBrandAvatar
+						color={competitor.color}
+						name={competitor.name}
+						slug={competitor.slug}
+					/>
 				</div>
 
 				<div className="space-y-2 text-sm">
 					<div className="flex items-center justify-between">
 						<span className="text-muted-foreground">Starting price</span>
-						<span className="font-semibold" style={{ color: competitor.color }}>
+						<span className="font-semibold text-foreground">
 							{competitor.pricing.starting}
 						</span>
 					</div>

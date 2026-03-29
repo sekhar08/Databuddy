@@ -6,6 +6,10 @@ import {
 	getAllCompetitorSlugs,
 	getComparisonData,
 } from "@/lib/comparison-config";
+import {
+	getProgrammaticComparisonSeo,
+	getProgrammaticIntroText,
+} from "@/lib/programmatic-comparison-seo";
 
 interface PageProps {
 	params: Promise<{
@@ -24,24 +28,25 @@ export async function generateMetadata({
 	const data = getComparisonData(slug);
 
 	if (!data) {
-		return { title: "Comparison Not Found | Databuddy" };
+		return { title: "Not Found | Databuddy" };
 	}
 
-	const compareUrl = `${SITE_URL}/compare/${slug}`;
+	const { title, description } = getProgrammaticComparisonSeo("switch-from", data);
+	const pageUrl = `${SITE_URL}/switch-from/${slug}`;
 
 	return {
-		title: data.seo.title,
-		description: data.seo.description,
+		title,
+		description,
 		openGraph: {
-			title: data.seo.title,
-			description: data.seo.description,
-			url: compareUrl,
+			title,
+			description,
+			url: pageUrl,
 		},
-		alternates: { canonical: compareUrl },
+		alternates: { canonical: pageUrl },
 	};
 }
 
-export default async function ComparisonPage({ params }: PageProps) {
+export default async function SwitchFromPage({ params }: PageProps) {
 	const { slug } = await params;
 	const data = getComparisonData(slug);
 
@@ -49,22 +54,23 @@ export default async function ComparisonPage({ params }: PageProps) {
 		notFound();
 	}
 
-	const { competitor, features, hero, seo, faqs, pricingTiers, migrationSection } =
+	const { competitor, features, hero, faqs, pricingTiers, migrationSection } =
 		data;
 	const featuresWin = features.filter(
 		(f) => f.databuddy && !f.competitor,
 	).length;
 
-	const pageUrl = `${SITE_URL}/compare/${slug}`;
-	const titleParts = hero.title.split(" vs ");
+	const { title, description } = getProgrammaticComparisonSeo("switch-from", data);
+	const pageUrl = `${SITE_URL}/switch-from/${slug}`;
+	const introText = getProgrammaticIntroText("switch-from", data);
 
 	return (
 		<ComparisonPageView
 			breadcrumbTrail={[
 				{ name: "Home", url: `${SITE_URL}/` },
-				{ name: "Compare", url: `${SITE_URL}/compare` },
+				{ name: "Switch from", url: `${SITE_URL}/switch-from` },
 				{
-					name: `vs ${competitor.name}`,
+					name: competitor.name,
 					url: pageUrl,
 				},
 			]}
@@ -72,20 +78,22 @@ export default async function ComparisonPage({ params }: PageProps) {
 			faqs={faqs}
 			features={features}
 			featuresWin={featuresWin}
+			featureSectionSubtitle={`Leaving ${competitor.name}? Feature and pricing comparison before you switch to Databuddy`}
 			heroCta={hero.cta}
 			heroDescription={hero.description}
 			heroHeading={
 				<>
-					{titleParts.at(0)}{" "}
-					<span className="text-muted-foreground">vs</span>{" "}
-					<span className="text-muted-foreground">{titleParts.at(1)}</span>
+					Switch from{" "}
+					<span className="text-muted-foreground">{competitor.name}</span>{" "}
+					<span className="text-muted-foreground">to</span> Databuddy
 				</>
 			}
+			introText={introText}
 			migrationSection={migrationSection}
 			pageUrl={pageUrl}
 			pricingTiers={pricingTiers}
-			structuredDescription={seo.description}
-			structuredTitle={seo.title}
+			structuredDescription={description}
+			structuredTitle={title}
 		/>
 	);
 }

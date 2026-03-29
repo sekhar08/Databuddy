@@ -9,6 +9,10 @@ const priorityRules = [
 	{ pattern: "/docs", priority: 1.0 },
 	{ pattern: "/compare/", priority: 0.85 },
 	{ pattern: "/compare", priority: 0.9 },
+	{ pattern: "/alternatives/", priority: 0.83 },
+	{ pattern: "/alternatives", priority: 0.84 },
+	{ pattern: "/switch-from/", priority: 0.83 },
+	{ pattern: "/switch-from", priority: 0.84 },
 
 	{ pattern: "/getting-started", priority: 0.9 },
 	{ pattern: "/sdk", priority: 0.9 },
@@ -111,6 +115,35 @@ export async function generateSitemapEntries(): Promise<MetadataRoute.Sitemap> {
 				lastModified,
 				changeFrequency: "monthly" as const,
 				priority: getPriority(`/compare/${slug}`),
+			}))
+		);
+
+		entries.push({
+			url: `${SITE_URL}/alternatives`,
+			lastModified,
+			changeFrequency: "monthly",
+			priority: getPriority("/alternatives"),
+		});
+		entries.push({
+			url: `${SITE_URL}/switch-from`,
+			lastModified,
+			changeFrequency: "monthly",
+			priority: getPriority("/switch-from"),
+		});
+		entries.push(
+			...competitorSlugs.map((slug) => ({
+				url: `${SITE_URL}/alternatives/${slug}`,
+				lastModified,
+				changeFrequency: "monthly" as const,
+				priority: getPriority(`/alternatives/${slug}`),
+			}))
+		);
+		entries.push(
+			...competitorSlugs.map((slug) => ({
+				url: `${SITE_URL}/switch-from/${slug}`,
+				lastModified,
+				changeFrequency: "monthly" as const,
+				priority: getPriority(`/switch-from/${slug}`),
 			}))
 		);
 

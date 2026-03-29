@@ -1,6 +1,7 @@
 import { ArrowRightIcon } from "@phosphor-icons/react/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_URL } from "@/app/util/constants";
 import { CompetitorCard } from "@/components/compare/competitor-card";
 import { SciFiButton } from "@/components/landing/scifi-btn";
 import Section from "@/components/landing/section";
@@ -8,60 +9,75 @@ import { Spotlight } from "@/components/landing/spotlight";
 import { StructuredData } from "@/components/structured-data";
 import { competitors } from "@/lib/comparison-config";
 
-const compareTitle =
-	"Databuddy vs Other Analytics Platforms — Feature Comparisons";
-const compareDescription =
-	"Side-by-side comparisons of Databuddy against Google Analytics, Plausible, Fathom, and more. See which privacy-first analytics platform fits your stack.";
-const compareUrl = "https://www.databuddy.cc/compare";
+const alternativesTitle =
+	"Alternative to Google Analytics, Plausible & More (2026) | Databuddy";
+const alternativesDescription =
+	"Find a privacy-first analytics alternative for your stack. Compare pricing, features, and migration for every major platform — one page per tool.";
+const alternativesUrl = `${SITE_URL}/alternatives`;
 
 export const metadata: Metadata = {
-	title: compareTitle,
-	description: compareDescription,
+	title: alternativesTitle,
+	description: alternativesDescription,
 	openGraph: {
-		title: compareTitle,
-		description: compareDescription,
-		url: compareUrl,
+		title: alternativesTitle,
+		description: alternativesDescription,
+		url: alternativesUrl,
 	},
-	alternates: { canonical: compareUrl },
+	alternates: { canonical: alternativesUrl },
 };
 
-export default function ComparePage() {
+export default function AlternativesHubPage() {
 	const entries = Object.entries(competitors);
 
 	return (
 		<div className="overflow-hidden">
 			<StructuredData
 				page={{
-					title: compareTitle,
-					description: compareDescription,
-					url: compareUrl,
+					title: alternativesTitle,
+					description: alternativesDescription,
+					url: alternativesUrl,
 				}}
 			/>
 			<Spotlight transform="translateX(-60%) translateY(-50%)" />
 
 			<div className="container mx-auto px-4 pt-8">
 				<div className="flex items-center gap-2 text-muted-foreground text-sm">
-					<Link className="transition-colors hover:text-foreground" href="/">
+					<Link
+						className="transition-colors hover:text-foreground"
+						href="/"
+					>
 						Home
 					</Link>
 					<span>/</span>
-					<span className="text-foreground">Compare</span>
+					<span className="text-foreground">Alternatives</span>
 				</div>
 			</div>
 
-			<Section className="overflow-hidden" customPaddings id="compare-hero">
+			<Section className="overflow-hidden" customPaddings id="alternatives-hero">
 				<section className="relative w-full pt-12 pb-12 sm:pt-16 sm:pb-16 lg:pt-20 lg:pb-20">
 					<div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
 						<div className="text-center">
 							<h1 className="mb-4 text-balance font-semibold text-3xl leading-tight tracking-tight sm:text-4xl md:text-5xl lg:text-6xl">
-								Compare{" "}
-								<span className="text-muted-foreground">
-									analytics platforms
-								</span>
+								Analytics{" "}
+								<span className="text-muted-foreground">alternatives</span>
 							</h1>
 							<p className="mx-auto max-w-2xl text-balance text-muted-foreground text-sm leading-relaxed sm:text-base">
-								See how Databuddy stacks up against other analytics platforms.
-								Privacy-first, AI-powered, and free to start.
+								Replacing a specific tool? Pick it below for pricing, features,
+								and setup. The same deep comparison is also available as{" "}
+								<Link
+									className="font-medium text-foreground underline-offset-4 hover:underline"
+									href="/compare"
+								>
+									standard Databuddy vs pages
+								</Link>{" "}
+								or with a{" "}
+								<Link
+									className="font-medium text-foreground underline-offset-4 hover:underline"
+									href="/switch-from"
+								>
+									migration-focused view
+								</Link>
+								.
 							</p>
 						</div>
 					</div>
@@ -70,22 +86,27 @@ export default function ComparePage() {
 
 			<Section
 				className="border-border border-t border-b bg-background/50"
-				id="competitors-grid"
+				id="alternatives-grid"
 			>
 				<div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
 					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						{entries.map(([slug, data]) => (
-							<CompetitorCard data={data} key={slug} />
+							<CompetitorCard
+								ctaLabel="View alternative page"
+								data={data}
+								headline={`Alternative to ${data.competitor.name}`}
+								href={`/alternatives/${slug}`}
+								key={slug}
+							/>
 						))}
 					</div>
 
 					<div className="mt-12 rounded border border-border bg-card/30 p-6 text-center backdrop-blur-sm sm:p-8">
 						<h3 className="mb-2 font-semibold text-foreground text-lg">
-							Don't see your platform?
+							Ready to try Databuddy?
 						</h3>
 						<p className="mb-5 text-pretty text-muted-foreground text-sm">
-							We're adding new comparisons regularly. Try Databuddy today and
-							see the difference.
+							Start free with 10K monthly pageviews — no credit card.
 						</p>
 						<div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
 							<SciFiButton asChild>

@@ -62,7 +62,7 @@ export const competitors: Record<string, ComparisonData> = {
 			description: "Google's web analytics platform",
 			website: "https://analytics.google.com",
 			tagline: "The most popular web analytics platform",
-			color: "#4285F4",
+			color: "#E37400",
 			pricing: {
 				starting: "Free",
 				note: "With data sampling and limits",
@@ -456,7 +456,7 @@ export const competitors: Record<string, ComparisonData> = {
 			website: "https://usefathom.com",
 			tagline:
 				"Google Analytics alternative that doesn't compromise visitor privacy",
-			color: "#8B5A3C",
+			color: "#9187FF",
 			pricing: {
 				starting: "$15/month",
 				note: "For 100K monthly pageviews, no free plan",
@@ -663,7 +663,7 @@ export const competitors: Record<string, ComparisonData> = {
 			website: "https://posthog.com",
 			tagline:
 				"All-in-one product analytics, session replay, and feature flags",
-			color: "#1D4AFF",
+			color: "#F54E00",
 			pricing: {
 				starting: "Free",
 				note: "Pay-as-you-go, costs scale fast",
@@ -1191,7 +1191,7 @@ export const competitors: Record<string, ComparisonData> = {
 			description: "Enterprise behavioral analytics platform",
 			website: "https://amplitude.com",
 			tagline: "The enterprise standard for behavioral analytics",
-			color: "#1A1A2E",
+			color: "#1E61F0",
 			pricing: {
 				starting: "Free",
 				note: "Plus: $49/mo, Growth & Enterprise: custom pricing",
@@ -1367,7 +1367,7 @@ export const competitors: Record<string, ComparisonData> = {
 			description: "Modern, open-source web analytics",
 			website: "https://rybbit.io",
 			tagline: "Open-source, cookieless web analytics",
-			color: "#10B981",
+			color: "#0a3a3a",
 			pricing: {
 				starting: "Free (self-hosted)",
 				note: "Cloud pricing TBD",
