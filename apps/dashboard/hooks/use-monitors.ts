@@ -3,18 +3,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 
-export interface MonitorLight {
-	id: string;
-	name: string | null;
-	url: string | null;
-	websiteId: string | null;
-	website: {
-		id: string;
-		name: string | null;
-		domain: string;
-	} | null;
-}
-
 export function useMonitorsLight(options?: { enabled?: boolean }) {
 	const query = useQuery({
 		...orpc.uptime.listSchedules.queryOptions({ input: {} }),
@@ -23,7 +11,11 @@ export function useMonitorsLight(options?: { enabled?: boolean }) {
 	});
 
 	return {
-		monitors: (query.data ?? []) as MonitorLight[],
+		monitors: query.data ?? [],
 		isLoading: query.isLoading,
 	};
 }
+
+export type MonitorLight = ReturnType<
+	typeof useMonitorsLight
+>["monitors"][number];

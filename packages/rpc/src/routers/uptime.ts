@@ -115,6 +115,10 @@ const getScheduleOutputSchema = z
 
 const scheduleOutputSchema = z.record(z.string(), z.unknown());
 
+const listScheduleItemSchema = getScheduleOutputSchema
+	.omit({ qstashStatus: true })
+	.loose();
+
 export const uptimeRouter = {
 	getScheduleByWebsiteId: protectedProcedure
 		.route({
@@ -159,7 +163,7 @@ export const uptimeRouter = {
 				})
 				.default({})
 		)
-		.output(z.array(scheduleOutputSchema))
+		.output(z.array(listScheduleItemSchema))
 		.handler(async ({ context, input }) => {
 			const orgId = input.organizationId ?? context.organizationId;
 
