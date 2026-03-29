@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { useDateFilters } from "@/hooks/use-date-filters";
 import { useBatchDynamicQuery } from "@/hooks/use-dynamic-query";
 import { orpc } from "@/lib/orpc";
+import { cn } from "@/lib/utils";
 import { fromNow, localDayjs } from "@/lib/time";
 import { LatencyChartChunkPlaceholder } from "@/lib/uptime/latency-chart-chunk-placeholder";
 import { UptimeHeatmap } from "@/lib/uptime/uptime-heatmap";
@@ -467,14 +468,15 @@ export default function MonitorDetailsPage() {
 		);
 	}
 
-	// Determine current status based on the most recent check
 	const latestCheck = allRecentChecks[0];
-	const currentStatus = latestCheck
+	const currentStatus: "up" | "degraded" | "down" | "unknown" = latestCheck
 		? latestCheck.status === 1
 			? "up"
 			: latestCheck.status === 2
 				? "unknown"
-				: "down"
+				: latestCheck.http_code > 0 && latestCheck.http_code < 500
+					? "degraded"
+					: "down"
 		: "unknown";
 
 	// Determine display name - prefer website name/domain for website monitors
@@ -632,11 +634,12 @@ export default function MonitorDetailsPage() {
 							</dt>
 							<dd className="mt-1.5">
 								<Badge
-									className={
-										!schedule.isPaused && currentStatus === "up"
-											? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
-											: ""
-									}
+									className={cn(
+										!schedule.isPaused && currentStatus === "up" &&
+											"border-emerald-500/20 bg-emerald-500/10 text-emerald-600",
+										!schedule.isPaused && currentStatus === "degraded" &&
+											"border-amber-500/20 bg-amber-500/10 text-amber-600",
+									)}
 									variant={
 										schedule.isPaused
 											? "secondary"
@@ -649,9 +652,11 @@ export default function MonitorDetailsPage() {
 										? "Paused"
 										: currentStatus === "down"
 											? "Outage"
-											: currentStatus === "up"
-												? "Operational"
-												: "Unknown"}
+											: currentStatus === "degraded"
+												? "Degraded"
+												: currentStatus === "up"
+													? "Operational"
+													: "Unknown"}
 								</Badge>
 							</dd>
 						</div>

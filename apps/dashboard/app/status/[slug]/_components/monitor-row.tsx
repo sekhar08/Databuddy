@@ -1,6 +1,7 @@
 import {
 	CheckCircleIcon,
 	MinusCircleIcon,
+	WarningCircleIcon,
 	XCircleIcon,
 } from "@phosphor-icons/react/ssr";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,7 @@ interface MonitorRowProps {
 	anchorId: string;
 	name: string;
 	domain: string;
-	currentStatus: "up" | "down" | "unknown";
+	currentStatus: "up" | "down" | "degraded" | "unknown";
 	uptimePercentage: number;
 	dailyData: DailyData[];
 	days: number;
@@ -31,6 +32,11 @@ const STATUS_ICON = {
 		Icon: CheckCircleIcon,
 		className: "text-emerald-500",
 		label: "Operational",
+	},
+	degraded: {
+		Icon: WarningCircleIcon,
+		className: "text-amber-500",
+		label: "Degraded",
 	},
 	down: { Icon: XCircleIcon, className: "text-red-500", label: "Down" },
 	unknown: {

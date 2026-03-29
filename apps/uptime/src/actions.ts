@@ -211,7 +211,7 @@ async function fetchWithRedirects(
 			const total = performance.now() - start;
 			clearTimeout(timer);
 
-			if (!res.ok) {
+			if (res.status >= 500) {
 				return {
 					ok: false,
 					statusCode: res.status,

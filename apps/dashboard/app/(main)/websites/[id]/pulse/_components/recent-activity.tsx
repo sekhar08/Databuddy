@@ -42,6 +42,19 @@ export function recentActivityCheckKey(check: RecentActivityCheck) {
 	return `${check.timestamp}-${check.probe_region}-${check.probe_ip ?? ""}-${check.http_code}-${check.total_ms}`;
 }
 
+function resolveCheckDisplay(check: RecentActivityCheck) {
+	if (check.status === 1) {
+		return { label: "Operational", tone: "up" } as const;
+	}
+	if (check.status === 2) {
+		return { label: "Pending", tone: "pending" } as const;
+	}
+	if (check.http_code > 0 && check.http_code < 500) {
+		return { label: "Degraded", tone: "degraded" } as const;
+	}
+	return { label: "Downtime", tone: "down" } as const;
+}
+
 function LoadMoreSkeletonRow() {
 	return (
 		<TableRow className="h-[52px] border-b hover:bg-transparent">
@@ -188,47 +201,66 @@ export function RecentActivity({
 							checks.map((check) => (
 								<TableRow key={recentActivityCheckKey(check)}>
 									<TableCell className="max-w-[min(100%,14rem)] align-middle">
+								{(() => {
+									const display = resolveCheckDisplay(check);
+									const iconMap = {
+										up: (
+											<CheckCircleIcon
+												aria-hidden
+												className="mt-0.5 shrink-0 text-emerald-500 sm:mt-0"
+												size={18}
+												weight="fill"
+											/>
+										),
+										pending: (
+											<WarningCircleIcon
+												aria-hidden
+												className="mt-0.5 shrink-0 text-amber-500 sm:mt-0"
+												size={18}
+												weight="fill"
+											/>
+										),
+										degraded: (
+											<WarningCircleIcon
+												aria-hidden
+												className="mt-0.5 shrink-0 text-amber-500 sm:mt-0"
+												size={18}
+												weight="fill"
+											/>
+										),
+										down: (
+											<XCircleIcon
+												aria-hidden
+												className="mt-0.5 shrink-0 text-red-500 sm:mt-0"
+												size={18}
+												weight="fill"
+											/>
+										),
+									};
+
+									return (
 										<div className="flex items-start gap-2.5 sm:items-center">
-											{check.status === 1 ? (
-												<CheckCircleIcon
-													aria-hidden
-													className="mt-0.5 shrink-0 text-emerald-500 sm:mt-0"
-													size={18}
-													weight="fill"
-												/>
-											) : check.status === 2 ? (
-												<WarningCircleIcon
-													aria-hidden
-													className="mt-0.5 shrink-0 text-amber-500 sm:mt-0"
-													size={18}
-													weight="fill"
-												/>
-											) : (
-												<XCircleIcon
-													aria-hidden
-													className="mt-0.5 shrink-0 text-red-500 sm:mt-0"
-													size={18}
-													weight="fill"
-												/>
-											)}
+											{iconMap[display.tone]}
 											<div className="flex min-w-0 flex-col gap-0.5">
 												<span className="font-medium text-sm leading-tight">
-													{check.status === 1
-														? "Operational"
-														: check.status === 2
-															? "Pending"
-															: "Downtime"}
+													{display.label}
 												</span>
-												{check.status !== 1 && check.error ? (
+												{display.tone === "down" && check.error ? (
 													<span
 														className="line-clamp-2 text-pretty text-destructive text-xs leading-snug"
 														title={check.error}
 													>
 														{check.error}
 													</span>
+												) : display.tone === "degraded" ? (
+													<span className="text-muted-foreground text-xs leading-snug">
+														HTTP {check.http_code}
+													</span>
 												) : null}
 											</div>
 										</div>
+									);
+								})()}
 									</TableCell>
 									<TableCell className="text-center align-middle text-muted-foreground text-xs tabular-nums">
 										{formatLocalTime(check.timestamp, "MMM D, HH:mm:ss")}

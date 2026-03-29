@@ -47,7 +47,7 @@ const statusPageOutputSchema = z.object({
 type StatusPageOutput = z.infer<typeof statusPageOutputSchema>;
 
 function deriveOverallStatus(
-	monitors: { currentStatus: "up" | "down" | "unknown" }[]
+	monitors: { currentStatus: "up" | "down" | "degraded" | "unknown" }[]
 ): "operational" | "degraded" | "outage" {
 	if (monitors.length === 0) {
 		return "operational";
@@ -59,6 +59,10 @@ function deriveOverallStatus(
 		return "outage";
 	}
 	if (hasDown) {
+		return "degraded";
+	}
+	const hasDegraded = monitors.some((m) => m.currentStatus === "degraded");
+	if (hasDegraded) {
 		return "degraded";
 	}
 	return "operational";
@@ -76,6 +80,7 @@ interface LatestCheckRow {
 	site_id: string;
 	last_timestamp: string;
 	last_status: number;
+	last_http_code: number;
 }
 
 async function _fetchStatusPageData(
@@ -164,7 +169,8 @@ async function _fetchStatusPageData(
 			`SELECT
 					site_id,
 					max(timestamp) as last_timestamp,
-					argMax(status, timestamp) as last_status
+					argMax(status, timestamp) as last_status,
+					argMax(http_code, timestamp) as last_http_code
 				FROM ${UPTIME_TABLE}
 				WHERE site_id IN ({siteIds:Array(String)})
 					AND timestamp >= now() - INTERVAL 7 DAY
@@ -198,11 +204,13 @@ async function _fetchStatusPageData(
 		const dailyData = dailyBySite.get(siteId) ?? [];
 		const latestCheck = latestBySite.get(siteId);
 
-		const currentStatus: "up" | "down" | "unknown" = latestCheck
+		const currentStatus: "up" | "down" | "degraded" | "unknown" = latestCheck
 			? latestCheck.last_status === 1
 				? "up"
 				: latestCheck.last_status === 0
-					? "down"
+					? latestCheck.last_http_code > 0 && latestCheck.last_http_code < 500
+						? "degraded"
+						: "down"
 					: "unknown"
 			: "unknown";
 
