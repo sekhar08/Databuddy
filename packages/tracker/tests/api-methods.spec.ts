@@ -559,6 +559,411 @@ test.describe("API Methods", () => {
 		});
 	});
 
+	test.describe("flush sends all queued events", () => {
+		test("flush() delivers queued track() calls via /track", async ({
+			page,
+			browserName,
+		}) => {
+			test.skip(
+				browserName === "webkit",
+				"WebKit/Playwright issue with batch interception"
+			);
+
+			let trackRequestFired = false;
+			const trackEvents: string[] = [];
+
+			await page.route("**/basket.databuddy.cc/track**", async (route) => {
+				trackRequestFired = true;
+				const data = JSON.parse(route.request().postData() ?? "[]");
+				const events = Array.isArray(data) ? data : [data];
+				for (const e of events) {
+					if (e.name) {
+						trackEvents.push(e.name as string);
+					}
+				}
+				await route.fulfill({
+					status: 200,
+					body: JSON.stringify({ success: true }),
+				});
+			});
+
+			await page.goto("/test");
+			await page.evaluate(() => {
+				(window as any).databuddyConfig = {
+					clientId: "test-flush-track",
+					ignoreBotDetection: true,
+					enableBatching: true,
+					batchSize: 100,
+					batchTimeout: 60_000,
+				};
+			});
+			await page.addScriptTag({ url: "/dist/databuddy-debug.js" });
+
+			await expect
+				.poll(async () => await page.evaluate(() => !!(window as any).db))
+				.toBeTruthy();
+
+			await page.evaluate(() => {
+				(window as any).db.track("cta_click", { button: "calendly" });
+				(window as any).db.track("book_demo", { source: "hr_page" });
+			});
+
+			await page.waitForTimeout(100);
+			expect(trackRequestFired).toBe(false);
+
+			await page.evaluate(() => {
+				(window as any).db.flush();
+			});
+
+			await page.waitForTimeout(500);
+			expect(trackRequestFired).toBe(true);
+			expect(trackEvents).toContain("cta_click");
+			expect(trackEvents).toContain("book_demo");
+		});
+
+		test("flush() delivers both batch and track queues", async ({
+			page,
+			browserName,
+		}) => {
+			test.skip(
+				browserName === "webkit",
+				"WebKit/Playwright issue with batch interception"
+			);
+
+			let batchFired = false;
+			let trackFired = false;
+
+			await page.route("**/basket.databuddy.cc/batch**", async (route) => {
+				batchFired = true;
+				await route.fulfill({
+					status: 200,
+					body: JSON.stringify({ success: true }),
+				});
+			});
+
+			await page.route("**/basket.databuddy.cc/track**", async (route) => {
+				trackFired = true;
+				await route.fulfill({
+					status: 200,
+					body: JSON.stringify({ success: true }),
+				});
+			});
+
+			await page.goto("/test");
+			await page.evaluate(() => {
+				(window as any).databuddyConfig = {
+					clientId: "test-flush-both",
+					ignoreBotDetection: true,
+					enableBatching: true,
+					batchSize: 100,
+					batchTimeout: 60_000,
+				};
+			});
+			await page.addScriptTag({ url: "/dist/databuddy-debug.js" });
+
+			await expect
+				.poll(async () => await page.evaluate(() => !!(window as any).db))
+				.toBeTruthy();
+
+			await page.evaluate(() => {
+				history.pushState({}, "", "/flush-both-a");
+			});
+			await page.waitForTimeout(150);
+
+			await page.evaluate(() => {
+				(window as any).db.track("signup_click");
+			});
+
+			await page.waitForTimeout(100);
+
+			await page.evaluate(() => {
+				(window as any).db.flush();
+			});
+
+			await page.waitForTimeout(500);
+			expect(batchFired).toBe(true);
+			expect(trackFired).toBe(true);
+		});
+
+		test("custom track events are sent on page unload", async ({
+			page,
+			browserName,
+		}) => {
+			test.skip(
+				browserName === "webkit",
+				"WebKit/Playwright issue with batch interception"
+			);
+
+			const trackEvents: string[] = [];
+
+			await page.route("**/basket.databuddy.cc/track**", async (route) => {
+				const data = JSON.parse(route.request().postData() ?? "[]");
+				const events = Array.isArray(data) ? data : [data];
+				for (const e of events) {
+					if (e.name) {
+						trackEvents.push(e.name as string);
+					}
+				}
+				await route.fulfill({
+					status: 200,
+					body: JSON.stringify({ success: true }),
+				});
+			});
+
+			await page.goto("/test");
+			await page.evaluate(() => {
+				(window as any).databuddyConfig = {
+					clientId: "test-unload-track",
+					ignoreBotDetection: true,
+					enableBatching: true,
+					batchSize: 100,
+					batchTimeout: 60_000,
+				};
+			});
+			await page.addScriptTag({ url: "/dist/databuddy-debug.js" });
+
+			await expect
+				.poll(async () => await page.evaluate(() => !!(window as any).db))
+				.toBeTruthy();
+
+			await page.evaluate(() => {
+				(window as any).db.track("pre_nav_click", { target: "contact" });
+			});
+
+			await page.waitForTimeout(100);
+			expect(trackEvents.length).toBe(0);
+
+			await page.goto("about:blank");
+			await page.waitForTimeout(500);
+
+			expect(trackEvents).toContain("pre_nav_click");
+		});
+
+		test("flush() delivers queued vitals via /vitals", async ({
+			page,
+			browserName,
+		}) => {
+			test.skip(
+				browserName === "webkit",
+				"WebKit/Playwright issue with batch interception"
+			);
+
+			let vitalsFired = false;
+
+			await page.route("**/basket.databuddy.cc/vitals**", async (route) => {
+				vitalsFired = true;
+				await route.fulfill({
+					status: 200,
+					body: JSON.stringify({ success: true }),
+				});
+			});
+
+			await page.goto("/test");
+			await page.evaluate(() => {
+				(window as any).databuddyConfig = {
+					clientId: "test-flush-vitals",
+					ignoreBotDetection: true,
+					enableBatching: true,
+					batchSize: 100,
+					batchTimeout: 60_000,
+					trackWebVitals: false,
+				};
+			});
+			await page.addScriptTag({ url: "/dist/databuddy-debug.js" });
+
+			await expect
+				.poll(
+					async () => await page.evaluate(() => !!(window as any).__tracker)
+				)
+				.toBeTruthy();
+
+			await page.evaluate(() => {
+				const tracker = (window as any).__tracker;
+				tracker.vitalsQueue.push({
+					timestamp: Date.now(),
+					path: "/test",
+					metricName: "LCP",
+					metricValue: 1200,
+					anonymousId: tracker.anonymousId,
+					sessionId: tracker.sessionId,
+				});
+			});
+
+			await page.waitForTimeout(100);
+			expect(vitalsFired).toBe(false);
+
+			await page.evaluate(() => {
+				(window as any).db.flush();
+			});
+
+			await page.waitForTimeout(500);
+			expect(vitalsFired).toBe(true);
+		});
+
+		test("flush() delivers queued errors via /errors", async ({
+			page,
+			browserName,
+		}) => {
+			test.skip(
+				browserName === "webkit",
+				"WebKit/Playwright issue with batch interception"
+			);
+
+			let errorsFired = false;
+
+			await page.route("**/basket.databuddy.cc/errors**", async (route) => {
+				errorsFired = true;
+				await route.fulfill({
+					status: 200,
+					body: JSON.stringify({ success: true }),
+				});
+			});
+
+			await page.goto("/test");
+			await page.evaluate(() => {
+				(window as any).databuddyConfig = {
+					clientId: "test-flush-errors",
+					ignoreBotDetection: true,
+					enableBatching: true,
+					batchSize: 100,
+					batchTimeout: 60_000,
+					trackErrors: false,
+				};
+			});
+			await page.addScriptTag({ url: "/dist/databuddy-debug.js" });
+
+			await expect
+				.poll(
+					async () => await page.evaluate(() => !!(window as any).__tracker)
+				)
+				.toBeTruthy();
+
+			await page.evaluate(() => {
+				const tracker = (window as any).__tracker;
+				tracker.errorsQueue.push({
+					timestamp: Date.now(),
+					path: "/test",
+					message: "Test error",
+					errorType: "TypeError",
+					anonymousId: tracker.anonymousId,
+					sessionId: tracker.sessionId,
+				});
+			});
+
+			await page.waitForTimeout(100);
+			expect(errorsFired).toBe(false);
+
+			await page.evaluate(() => {
+				(window as any).db.flush();
+			});
+
+			await page.waitForTimeout(500);
+			expect(errorsFired).toBe(true);
+		});
+
+		test("flush() delivers all four queues at once", async ({
+			page,
+			browserName,
+		}) => {
+			test.skip(
+				browserName === "webkit",
+				"WebKit/Playwright issue with batch interception"
+			);
+
+			let batchFired = false;
+			let trackFired = false;
+			let vitalsFired = false;
+			let errorsFired = false;
+
+			await page.route("**/basket.databuddy.cc/batch**", async (route) => {
+				batchFired = true;
+				await route.fulfill({
+					status: 200,
+					body: JSON.stringify({ success: true }),
+				});
+			});
+			await page.route("**/basket.databuddy.cc/track**", async (route) => {
+				trackFired = true;
+				await route.fulfill({
+					status: 200,
+					body: JSON.stringify({ success: true }),
+				});
+			});
+			await page.route("**/basket.databuddy.cc/vitals**", async (route) => {
+				vitalsFired = true;
+				await route.fulfill({
+					status: 200,
+					body: JSON.stringify({ success: true }),
+				});
+			});
+			await page.route("**/basket.databuddy.cc/errors**", async (route) => {
+				errorsFired = true;
+				await route.fulfill({
+					status: 200,
+					body: JSON.stringify({ success: true }),
+				});
+			});
+
+			await page.goto("/test");
+			await page.evaluate(() => {
+				(window as any).databuddyConfig = {
+					clientId: "test-flush-all",
+					ignoreBotDetection: true,
+					enableBatching: true,
+					batchSize: 100,
+					batchTimeout: 60_000,
+					trackWebVitals: false,
+					trackErrors: false,
+				};
+			});
+			await page.addScriptTag({ url: "/dist/databuddy-debug.js" });
+
+			await expect
+				.poll(
+					async () => await page.evaluate(() => !!(window as any).__tracker)
+				)
+				.toBeTruthy();
+
+			await page.evaluate(() => {
+				history.pushState({}, "", "/flush-all-a");
+			});
+			await page.waitForTimeout(150);
+
+			await page.evaluate(() => {
+				const tracker = (window as any).__tracker;
+				(window as any).db.track("all_queues_event");
+				tracker.vitalsQueue.push({
+					timestamp: Date.now(),
+					path: "/test",
+					metricName: "FCP",
+					metricValue: 800,
+					anonymousId: tracker.anonymousId,
+					sessionId: tracker.sessionId,
+				});
+				tracker.errorsQueue.push({
+					timestamp: Date.now(),
+					path: "/test",
+					message: "Flush all test",
+					errorType: "Error",
+					anonymousId: tracker.anonymousId,
+					sessionId: tracker.sessionId,
+				});
+			});
+
+			await page.waitForTimeout(100);
+
+			await page.evaluate(() => {
+				(window as any).db.flush();
+			});
+
+			await page.waitForTimeout(500);
+			expect(batchFired).toBe(true);
+			expect(trackFired).toBe(true);
+			expect(vitalsFired).toBe(true);
+			expect(errorsFired).toBe(true);
+		});
+	});
+
 	test.describe("destroy", () => {
 		test("removes global window.databuddy reference", async ({ page }) => {
 			await page.goto("/test");

@@ -46,7 +46,14 @@ export class Databuddy extends BaseTracker {
 				track: (name: string, props?: Record<string, unknown>) =>
 					this.track(name, props),
 				screenView: (props?: Record<string, unknown>) => this.screenView(props),
-				flush: () => this.flushBatch(),
+				flush: () => {
+					Promise.all([
+						this.flushBatch(),
+						this.flushTrack(),
+						this.flushVitals(),
+						this.flushErrors(),
+					]).catch(() => {});
+				},
 				clear: () => this.clear(),
 				setGlobalProperties: (props: Record<string, unknown>) =>
 					this.setGlobalProperties(props),
@@ -57,6 +64,9 @@ export class Databuddy extends BaseTracker {
 			};
 			window.databuddy = api;
 			window.db = window.databuddy;
+			if (isDebugMode()) {
+				(window as any).__tracker = this;
+			}
 		}
 	}
 
@@ -204,6 +214,9 @@ export class Databuddy extends BaseTracker {
 	}
 
 	private handlePageUnload() {
+		this.flushTrack().catch(() => {});
+		this.flushVitals().catch(() => {});
+		this.flushErrors().catch(() => {});
 		this.pauseEngagement();
 		if (this.hasSentExitBeacon) {
 			return;
