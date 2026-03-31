@@ -49,12 +49,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 		return [];
 	}
 
-	const statusPages = await getPublicStatusPages();
+	try {
+		const statusPages = await getPublicStatusPages();
 
-	return statusPages.map((statusPage) => ({
-		url: `${APP_URL}/status/${statusPage.slug}`,
-		lastModified: statusPage.updatedAt,
-		changeFrequency: "daily",
-		priority: 0.7,
-	}));
+		return statusPages.map((statusPage) => ({
+			url: `${APP_URL}/status/${statusPage.slug}`,
+			lastModified: statusPage.updatedAt,
+			changeFrequency: "daily",
+			priority: 0.7,
+		}));
+	} catch {
+		return [];
+	}
 }
