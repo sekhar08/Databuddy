@@ -155,8 +155,11 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgres://databuddy:${DB_PASSWORD:-changeme}@postgres:5432/databuddy
       REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
-      APP_URL: ${APP_URL:-https://app.databuddy.cc}
+      # APP_URL: public URL of your dashboard — used for expired/not-found link redirect pages
+      APP_URL: ${APP_URL:?Set APP_URL to your dashboard public URL (e.g. https://app.example.com)}
       LINKS_ROOT_REDIRECT_URL: ${LINKS_ROOT_REDIRECT_URL:-https://databuddy.cc}
+      # GEOIP_DB_URL: fetches MaxMind GeoLite2-City DB on startup from this URL.
+      # Defaults to cdn.databuddy.cc — override with your own hosted copy to avoid the external dependency.
       GEOIP_DB_URL: ${GEOIP_DB_URL:-https://cdn.databuddy.cc/mmdb/GeoLite2-City.mmdb}
     depends_on:
       postgres:
