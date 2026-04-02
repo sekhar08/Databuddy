@@ -4,18 +4,26 @@ import {
 	alarmDestinations,
 	alarms,
 	analyticsInsights,
+	annotations,
 	apikey,
+	assistantConversations,
+	assistantMessages,
 	featureAccessLog,
 	featureInvite,
+	feedback,
+	feedbackRedemptions,
 	flags,
 	flagsToTargetGroups,
 	funnelDefinitions,
+	goals,
+	insightUserFeedback,
 	invitation,
 	links,
 	member,
 	organization,
 	revenueConfig,
 	session,
+	ssoProvider,
 	targetGroups,
 	team,
 	twoFactor,
@@ -276,3 +284,106 @@ export const featureAccessLogRelations = relations(
 		}),
 	})
 );
+
+export const goalsRelations = relations(goals, ({ one }) => ({
+	website: one(websites, {
+		fields: [goals.websiteId],
+		references: [websites.id],
+	}),
+	creator: one(user, {
+		fields: [goals.createdBy],
+		references: [user.id],
+	}),
+}));
+
+export const annotationsRelations = relations(annotations, ({ one }) => ({
+	website: one(websites, {
+		fields: [annotations.websiteId],
+		references: [websites.id],
+	}),
+	creator: one(user, {
+		fields: [annotations.createdBy],
+		references: [user.id],
+	}),
+}));
+
+export const feedbackRelations = relations(feedback, ({ one }) => ({
+	user: one(user, {
+		fields: [feedback.userId],
+		references: [user.id],
+		relationName: "feedbackUser",
+	}),
+	organization: one(organization, {
+		fields: [feedback.organizationId],
+		references: [organization.id],
+	}),
+	reviewer: one(user, {
+		fields: [feedback.reviewedBy],
+		references: [user.id],
+		relationName: "feedbackReviewer",
+	}),
+}));
+
+export const feedbackRedemptionsRelations = relations(
+	feedbackRedemptions,
+	({ one }) => ({
+		user: one(user, {
+			fields: [feedbackRedemptions.userId],
+			references: [user.id],
+		}),
+		organization: one(organization, {
+			fields: [feedbackRedemptions.organizationId],
+			references: [organization.id],
+		}),
+	})
+);
+
+export const insightUserFeedbackRelations = relations(
+	insightUserFeedback,
+	({ one }) => ({
+		user: one(user, {
+			fields: [insightUserFeedback.userId],
+			references: [user.id],
+		}),
+		organization: one(organization, {
+			fields: [insightUserFeedback.organizationId],
+			references: [organization.id],
+		}),
+	})
+);
+
+export const assistantConversationsRelations = relations(
+	assistantConversations,
+	({ one, many }) => ({
+		user: one(user, {
+			fields: [assistantConversations.userId],
+			references: [user.id],
+		}),
+		website: one(websites, {
+			fields: [assistantConversations.websiteId],
+			references: [websites.id],
+		}),
+		messages: many(assistantMessages),
+	})
+);
+
+export const assistantMessagesRelations = relations(
+	assistantMessages,
+	({ one }) => ({
+		conversation: one(assistantConversations, {
+			fields: [assistantMessages.conversationId],
+			references: [assistantConversations.id],
+		}),
+	})
+);
+
+export const ssoProviderRelations = relations(ssoProvider, ({ one }) => ({
+	user: one(user, {
+		fields: [ssoProvider.userId],
+		references: [user.id],
+	}),
+	organization: one(organization, {
+		fields: [ssoProvider.organizationId],
+		references: [organization.id],
+	}),
+}));

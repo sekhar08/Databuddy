@@ -281,6 +281,7 @@ export const flagsRouter = {
 					const flagsList = await context.db.query.flags.findMany({
 						where: and(...conditions),
 						orderBy: desc(flags.createdAt),
+						limit: 200,
 						with: {
 							flagsToTargetGroups: {
 								with: {

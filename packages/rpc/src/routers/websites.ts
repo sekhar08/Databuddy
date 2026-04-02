@@ -330,6 +330,7 @@ export const websitesRouter = {
 			return context.db.query.websites.findMany({
 				where: eq(websites.organizationId, workspace.organizationId as string),
 				orderBy: (table, { desc }) => [desc(table.createdAt)],
+				limit: 100,
 			});
 		}),
 
@@ -353,6 +354,7 @@ export const websitesRouter = {
 			const websitesList = await context.db.query.websites.findMany({
 				where: eq(websites.organizationId, workspace.organizationId as string),
 				orderBy: (table, { desc }) => [desc(table.createdAt)],
+				limit: 100,
 			});
 
 			const websiteIds = websitesList.map((site) => site.id);
@@ -382,6 +384,7 @@ export const websitesRouter = {
 			});
 
 			const site = workspace.website;
+
 			if (!site) {
 				throw rpcError.notFound("website");
 			}
@@ -396,9 +399,9 @@ export const websitesRouter = {
 					createdAt: site.createdAt,
 					updatedAt: site.updatedAt,
 					organizationId: site.organizationId,
-					deletedAt: site.deletedAt ?? null,
-					integrations: site.integrations ?? null,
-					settings: site.settings ?? null,
+					deletedAt: site.deletedAt,
+					integrations: site.integrations,
+					settings: site.settings,
 				};
 			}
 
@@ -678,11 +681,7 @@ export const websitesRouter = {
 				permissions: ["update"],
 			});
 
-			const currentSettings =
-				(website.settings as {
-					allowedOrigins?: string[];
-					allowedIps?: string[];
-				}) ?? {};
+			const currentSettings = website.settings ?? {};
 
 			const newSettings = {
 				...currentSettings,

@@ -147,9 +147,16 @@ export const invitation = pgTable(
 		inviterId: text("inviter_id").notNull(),
 	},
 	(table) => [
-		index("invitations_organizationId_idx").using(
+		index("idx_invitation_email_status_expires").using(
 			"btree",
-			table.organizationId.asc().nullsLast().op("text_ops")
+			table.email.asc().nullsLast().op("text_ops"),
+			table.status.asc().nullsLast().op("text_ops"),
+			table.expiresAt.asc().nullsLast().op("timestamp_ops")
+		),
+		index("idx_invitation_org_expires").using(
+			"btree",
+			table.organizationId.asc().nullsLast().op("text_ops"),
+			table.expiresAt.desc().nullsLast().op("timestamp_ops")
 		),
 		index("idx_invitation_inviter_id").using(
 			"btree",
@@ -179,13 +186,14 @@ export const member = pgTable(
 		createdAt: timestamp("created_at").notNull(),
 	},
 	(table) => [
+		index("idx_member_org_user").using(
+			"btree",
+			table.organizationId.asc().nullsLast().op("text_ops"),
+			table.userId.asc().nullsLast().op("text_ops")
+		),
 		index("members_userId_idx").using(
 			"btree",
 			table.userId.asc().nullsLast().op("text_ops")
-		),
-		index("members_organizationId_idx").using(
-			"btree",
-			table.organizationId.asc().nullsLast().op("text_ops")
 		),
 		foreignKey({
 			columns: [table.organizationId],
@@ -308,6 +316,11 @@ export const userPreferences = pgTable(
 	]
 );
 
+export interface WebsiteSettings {
+	allowedOrigins?: string[];
+	allowedIps?: string[];
+}
+
 export const websites = pgTable(
 	"websites",
 	{
@@ -320,8 +333,8 @@ export const websites = pgTable(
 		updatedAt: timestamp({ precision: 3 }).defaultNow().notNull(),
 		deletedAt: timestamp({ precision: 3 }),
 		organizationId: text("organization_id").notNull(),
-		integrations: jsonb(),
-		settings: jsonb(),
+		integrations: jsonb().$type<Record<string, unknown>>(),
+		settings: jsonb().$type<WebsiteSettings>(),
 	},
 	(table) => [
 		uniqueIndex("websites_org_domain_unique").on(
@@ -356,6 +369,19 @@ export const user = pgTable(
 	(table) => [unique("users_email_unique").on(table.email)]
 );
 
+export interface DataFilter {
+	field: string;
+	operator: "equals" | "contains" | "not_equals" | "in" | "not_in";
+	value: string | string[];
+}
+
+export interface FunnelStep {
+	type: "PAGE_VIEW" | "EVENT" | "CUSTOM";
+	target: string;
+	name: string;
+	conditions?: Record<string, unknown>;
+}
+
 export const funnelDefinitions = pgTable(
 	"funnel_definitions",
 	{
@@ -363,8 +389,8 @@ export const funnelDefinitions = pgTable(
 		websiteId: text().notNull(),
 		name: text().notNull(),
 		description: text(),
-		steps: jsonb().notNull(),
-		filters: jsonb(),
+		steps: jsonb().$type<FunnelStep[]>().notNull(),
+		filters: jsonb().$type<DataFilter[]>(),
 		ignoreHistoricData: boolean().default(false).notNull(),
 		isActive: boolean().default(true).notNull(),
 		createdBy: text().notNull(),
@@ -407,7 +433,7 @@ export const goals = pgTable(
 		target: text().notNull(), // event name or page path
 		name: text().notNull(),
 		description: text(),
-		filters: jsonb(),
+		filters: jsonb().$type<DataFilter[]>(),
 		ignoreHistoricData: boolean().default(false).notNull(),
 		isActive: boolean().default(true).notNull(),
 		createdBy: text().notNull(),
@@ -499,6 +525,13 @@ export const apiResourceType = pgEnum("api_resource_type", [
 	"export_data",
 ]);
 
+export interface ApiKeyMetadata {
+	resources?: Record<string, string[]>;
+	tags?: string[];
+	description?: string;
+	lastUsedAt?: string;
+}
+
 export const apikey = pgTable(
 	"apikey",
 	{
@@ -517,7 +550,7 @@ export const apikey = pgTable(
 		rateLimitTimeWindow: integer("rate_limit_time_window"),
 		rateLimitMax: integer("rate_limit_max"),
 		expiresAt: timestamp("expires_at", { mode: "string" }),
-		metadata: jsonb("metadata").default({}),
+		metadata: jsonb("metadata").$type<ApiKeyMetadata>().default({}),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
@@ -603,21 +636,22 @@ export const assistantMessages = pgTable(
 		sql: text("sql"),
 		chartType: text("chart_type"),
 		responseType: text("response_type"),
-		finalResult: jsonb("final_result"),
+		finalResult: jsonb("final_result").$type<Record<string, unknown>>(),
 		textResponse: text("text_response"),
 		thinkingSteps: text("thinking_steps").array(),
 		hasError: boolean("has_error").default(false).notNull(),
 		errorMessage: text("error_message"),
 		upvotes: integer("upvotes").default(0).notNull(),
 		downvotes: integer("downvotes").default(0).notNull(),
-		feedbackComments: jsonb("feedback_comments"),
+		feedbackComments:
+			jsonb("feedback_comments").$type<Record<string, unknown>>(),
 		aiResponseTime: integer("ai_response_time"),
 		totalProcessingTime: integer("total_processing_time"),
 		promptTokens: integer("prompt_tokens"),
 		completionTokens: integer("completion_tokens"),
 		totalTokens: integer("total_tokens"),
 		debugLogs: text("debug_logs").array(),
-		metadata: jsonb("metadata"),
+		metadata: jsonb("metadata").$type<Record<string, unknown>>(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 	},
 	(table) => [
@@ -661,6 +695,33 @@ export const annotationType = pgEnum("annotation_type", [
 
 export const chartType = pgEnum("chart_type", ["metrics"]);
 
+export interface FlagUserRule {
+	type: "user_id" | "email" | "property";
+	operator:
+		| "equals"
+		| "contains"
+		| "starts_with"
+		| "ends_with"
+		| "in"
+		| "not_in"
+		| "exists"
+		| "not_exists";
+	field?: string;
+	value?: string;
+	values?: string[];
+	enabled: boolean;
+	batch: boolean;
+	batchValues?: string[];
+}
+
+export interface FlagVariant {
+	key: string;
+	value: string | number;
+	weight?: number;
+	description?: string;
+	type: "string" | "number" | "json";
+}
+
 export const flags = pgTable(
 	"flags",
 	{
@@ -670,9 +731,12 @@ export const flags = pgTable(
 		description: text(),
 		type: flagType().default("boolean").notNull(),
 		status: flagStatus().default("active").notNull(),
-		defaultValue: jsonb("default_value").default(false).notNull(),
-		payload: jsonb("payload"),
-		rules: jsonb("rules").default([]),
+		defaultValue: jsonb("default_value")
+			.$type<boolean>()
+			.default(false)
+			.notNull(),
+		payload: jsonb("payload").$type<Record<string, unknown>>(),
+		rules: jsonb("rules").$type<FlagUserRule[]>().default([]),
 		persistAcrossAuth: boolean("persist_across_auth").default(false).notNull(),
 		rolloutPercentage: integer("rollout_percentage").default(0),
 		rolloutBy: text("rollout_by"),
@@ -680,7 +744,7 @@ export const flags = pgTable(
 		organizationId: text("organization_id"),
 		userId: text("user_id"),
 		createdBy: text("created_by").notNull(),
-		variants: jsonb("variants").default([]),
+		variants: jsonb("variants").$type<FlagVariant[]>().default([]),
 		dependencies: text("dependencies").array(),
 		targetGroupIds: text("target_group_ids").array(),
 		environment: text("environment"),
@@ -735,13 +799,30 @@ export const flags = pgTable(
 	]
 );
 
+export interface AnnotationChartContext {
+	dateRange: {
+		start_date: string;
+		end_date: string;
+		granularity: "hourly" | "daily" | "weekly" | "monthly";
+	};
+	filters?: Array<{
+		field: string;
+		operator: "eq" | "ne" | "gt" | "lt" | "contains";
+		value: string;
+	}>;
+	metrics?: string[];
+	tabId?: string;
+}
+
 export const annotations = pgTable(
 	"annotations",
 	{
 		id: text().primaryKey().notNull(),
 		websiteId: text("website_id").notNull(),
 		chartType: chartType("chart_type").notNull(),
-		chartContext: jsonb("chart_context").notNull(),
+		chartContext: jsonb("chart_context")
+			.$type<AnnotationChartContext>()
+			.notNull(),
 		annotationType: annotationType("annotation_type").notNull(),
 		xValue: timestamp("x_value", { precision: 3 }).notNull(),
 		xEndValue: timestamp("x_end_value", { precision: 3 }),
@@ -1213,7 +1294,10 @@ export const alarms = pgTable(
 		description: text(),
 		enabled: boolean().notNull().default(true),
 		triggerType: text("trigger_type").notNull(),
-		triggerConditions: jsonb("trigger_conditions").notNull().default({}),
+		triggerConditions: jsonb("trigger_conditions")
+			.$type<Record<string, unknown>>()
+			.notNull()
+			.default({}),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),
@@ -1255,7 +1339,10 @@ export const alarmDestinations = pgTable(
 		/** Webhook URL, email address, Telegram chat id, etc.; may be empty when `config` holds all fields */
 		identifier: text("identifier").notNull().default(""),
 		/** Extra fields (e.g. Telegram `botToken`, webhook headers, multiple emails) */
-		config: jsonb("config").notNull().default({}),
+		config: jsonb("config")
+			.$type<Record<string, unknown>>()
+			.notNull()
+			.default({}),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),
@@ -1322,7 +1409,7 @@ export const featureAccessLog = pgTable(
 		actorId: text("actor_id"),
 		targetEmail: text("target_email").notNull(),
 		organizationId: text("organization_id").notNull(),
-		metadata: jsonb(),
+		metadata: jsonb().$type<Record<string, unknown>>(),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(table) => [

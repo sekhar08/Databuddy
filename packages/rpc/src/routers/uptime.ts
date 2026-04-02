@@ -184,6 +184,7 @@ export const uptimeRouter = {
 				where: eq(uptimeSchedules.organizationId, orgId),
 				orderBy: (table, { desc }) => [desc(table.createdAt)],
 				with: { website: true },
+				limit: 100,
 			});
 		}),
 

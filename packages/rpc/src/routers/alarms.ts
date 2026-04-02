@@ -74,6 +74,7 @@ export const alarmsRouter = {
 				where: eq(alarms.organizationId, orgId),
 				orderBy: (table, { desc }) => [desc(table.createdAt)],
 				with: { destinations: true },
+				limit: 100,
 			});
 		}),
 

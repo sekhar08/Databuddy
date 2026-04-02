@@ -31,6 +31,9 @@ function connectionStringForNodePg(connectionString: string): string {
 
 const pool = new Pool({
 	connectionString: connectionStringForNodePg(databaseUrl),
+	max: Number.parseInt(process.env.DB_POOL_MAX ?? "20", 10) || 20,
+	idleTimeoutMillis: 30_000,
+	connectionTimeoutMillis: 5000,
 });
 
 export const db = drizzle(pool, {

@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type { Website } from "@databuddy/db";
-import { and, db, eq, type WebsiteInsert, websites } from "@databuddy/db";
+import {
+	and,
+	db,
+	eq,
+	isUniqueViolationFor,
+	type WebsiteInsert,
+	websites,
+} from "@databuddy/db";
 import { WebsiteCache } from "./website-cache";
 
 export type { Website } from "@databuddy/db";
@@ -142,6 +149,7 @@ export class WebsiteService {
 
 			const rows = await this.database.query.websites.findMany({
 				where: eq(websites.organizationId, organizationId),
+				limit: 1000,
 			});
 			await this.cache?.setList(organizationId, rows);
 			return rows;
@@ -153,15 +161,6 @@ export class WebsiteService {
 
 	async create(input: CreateWebsiteInput): Promise<Website> {
 		const normalizedDomain = input.domain.trim().toLowerCase();
-
-		const existing = await this.getByDomain(
-			normalizedDomain,
-			input.organizationId
-		);
-
-		if (existing) {
-			throw new DuplicateDomainError(normalizedDomain);
-		}
 
 		try {
 			const [created] = await this.database
@@ -188,6 +187,9 @@ export class WebsiteService {
 
 			return created;
 		} catch (error) {
+			if (isUniqueViolationFor(error, "websites_org_domain_unique")) {
+				throw new DuplicateDomainError(normalizedDomain);
+			}
 			if (
 				error instanceof DuplicateDomainError ||
 				error instanceof ValidationError ||
@@ -203,14 +205,9 @@ export class WebsiteService {
 	}
 
 	async updateById(id: string, updates: UpdateWebsiteInput): Promise<Website> {
-		const hasAtLeastOneUpdate = (() => {
-			for (const value of Object.values(updates)) {
-				if (value !== undefined) {
-					return true;
-				}
-			}
-			return false;
-		})();
+		const hasAtLeastOneUpdate = Object.values(updates).some(
+			(v) => v !== undefined
+		);
 
 		if (!hasAtLeastOneUpdate) {
 			const website = await this.getById(id);
