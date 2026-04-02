@@ -26,4 +26,7 @@ EXPOSE 3001
 
 WORKDIR /app/apps/api
 
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD bun -e "const r = await fetch('http://localhost:3001/health'); if (!r.ok) process.exit(1);"
+
 CMD ["bun", "run", "src/index.ts"]
