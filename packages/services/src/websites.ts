@@ -190,13 +190,6 @@ export class WebsiteService {
 			if (isUniqueViolationFor(error, "websites_org_domain_unique")) {
 				throw new DuplicateDomainError(normalizedDomain);
 			}
-			if (
-				error instanceof DuplicateDomainError ||
-				error instanceof ValidationError ||
-				error instanceof WebsiteNotFoundError
-			) {
-				throw error;
-			}
 			console.error("WebsiteService.create failed:", { error: String(error) });
 			throw new Error(
 				`Failed to create website: ${error instanceof Error ? error.message : String(error)}`
@@ -224,20 +217,7 @@ export class WebsiteService {
 
 		const normalizedUpdates = { ...updates };
 		if (updates.domain !== undefined) {
-			const normalizedDomain = updates.domain.trim().toLowerCase();
-
-			if (normalizedDomain !== before.domain.toLowerCase()) {
-				const existing = await this.getByDomain(
-					normalizedDomain,
-					before.organizationId
-				);
-
-				if (existing && existing.id !== id) {
-					throw new DuplicateDomainError(normalizedDomain);
-				}
-			}
-
-			normalizedUpdates.domain = normalizedDomain;
+			normalizedUpdates.domain = updates.domain.trim().toLowerCase();
 		}
 
 		try {
@@ -278,11 +258,10 @@ export class WebsiteService {
 
 			return updated;
 		} catch (error) {
-			if (
-				error instanceof DuplicateDomainError ||
-				error instanceof ValidationError ||
-				error instanceof WebsiteNotFoundError
-			) {
+			if (isUniqueViolationFor(error, "websites_org_domain_unique")) {
+				throw new DuplicateDomainError(normalizedUpdates.domain ?? "");
+			}
+			if (error instanceof WebsiteNotFoundError) {
 				throw error;
 			}
 			console.error("WebsiteService.updateById failed:", {
@@ -295,11 +274,6 @@ export class WebsiteService {
 	}
 
 	async deleteById(id: string): Promise<void> {
-		const before = await this.getByIdFromDb(id);
-		if (!before) {
-			throw new WebsiteNotFoundError();
-		}
-
 		try {
 			const [deleted] = await this.database
 				.delete(websites)
@@ -317,11 +291,7 @@ export class WebsiteService {
 			);
 			await this.cache?.invalidateLists([deleted.organizationId]);
 		} catch (error) {
-			if (
-				error instanceof DuplicateDomainError ||
-				error instanceof ValidationError ||
-				error instanceof WebsiteNotFoundError
-			) {
+			if (error instanceof WebsiteNotFoundError) {
 				throw error;
 			}
 			console.error("WebsiteService.deleteById failed:", {
