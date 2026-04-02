@@ -21,7 +21,10 @@ initLogger({
 const app = new Elysia()
 	.use(evlog({ enrich: enrichLinksWideEvent }))
 	.get("/", function rootRedirect() {
-		return redirect("https://databuddy.cc", 302);
+		return redirect(
+			process.env.LINKS_ROOT_REDIRECT_URL || "https://databuddy.cc",
+			302
+		);
 	})
 	.get("/health/status", async function linksHealthStatus() {
 		const { db, sql } = await import("@databuddy/db");

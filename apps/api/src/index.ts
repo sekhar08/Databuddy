@@ -265,6 +265,7 @@ const app = new Elysia({ precompile: true })
 				...(process.env.NODE_ENV === "development"
 					? ["http://localhost:3000"]
 					: []),
+				...(process.env.DASHBOARD_URL ? [process.env.DASHBOARD_URL] : []),
 			],
 		})
 	)

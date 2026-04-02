@@ -6,7 +6,9 @@
 
 import { AddressNotFoundError, Reader } from "@maxmind/geoip2-node";
 
-const CDN_URL = "https://cdn.databuddy.cc/mmdb/GeoLite2-City.mmdb";
+const CDN_URL =
+	process.env.GEOIP_DB_URL ||
+	"https://cdn.databuddy.cc/mmdb/GeoLite2-City.mmdb";
 
 const REGIONS: Record<string, string[]> = {
 	NA: [

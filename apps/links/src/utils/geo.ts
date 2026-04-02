@@ -19,7 +19,9 @@ interface GeoResult {
 	city: string | null;
 }
 
-const CDN_URL = "https://cdn.databuddy.cc/mmdb/GeoLite2-City.mmdb";
+const CDN_URL =
+	process.env.GEOIP_DB_URL ||
+	"https://cdn.databuddy.cc/mmdb/GeoLite2-City.mmdb";
 const EMPTY_GEO: GeoResult = { country: null, region: null, city: null };
 
 let reader: GeoIPReader | null = null;

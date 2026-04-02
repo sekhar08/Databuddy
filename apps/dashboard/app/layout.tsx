@@ -133,7 +133,7 @@ export default function RootLayout({
 					apiUrl={
 						isLocalhost
 							? "http://localhost:4000"
-							: "https://basket.databuddy.cc"
+							: (process.env.NEXT_PUBLIC_BASKET_URL || "https://basket.databuddy.cc")
 					}
 					clientId={
 						isLocalhost

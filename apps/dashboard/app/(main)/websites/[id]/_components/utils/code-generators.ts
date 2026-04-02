@@ -11,10 +11,10 @@ export function generateScriptTag(
 	const isLocalhost = process.env.NODE_ENV === "development";
 	const scriptUrl = isLocalhost
 		? "http://localhost:3000/databuddy.js"
-		: "https://cdn.databuddy.cc/databuddy.js";
+		: (process.env.NEXT_PUBLIC_TRACKER_URL || "https://cdn.databuddy.cc/databuddy.js");
 	const _apiUrl = isLocalhost
 		? "http://localhost:4000"
-		: "https://basket.databuddy.cc";
+		: (process.env.NEXT_PUBLIC_BASKET_URL || "https://basket.databuddy.cc");
 
 	const options = Object.entries(trackingOptions)
 		.filter(([key, value]) => {
