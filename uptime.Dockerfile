@@ -23,14 +23,20 @@ RUN bun build \
     --bytecode \
     ./apps/uptime/src/index.ts
 
-FROM gcr.io/distroless/base
+FROM oven/bun:1.3.4-distroless
 
 WORKDIR /app
 
 COPY --from=build /app/server server
+COPY healthcheck.ts healthcheck.ts
 
 ENV NODE_ENV=production
+ENV HEALTHCHECK_PORT=4000
 
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD ["bun", "/app/healthcheck.ts"]
+
+ENTRYPOINT []
 CMD ["./server"]
 
 EXPOSE 4000
