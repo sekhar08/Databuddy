@@ -27,7 +27,7 @@ RUN bun build \
 	--bytecode \
 	./src/index.ts
 
-FROM gcr.io/distroless/cc:debug
+FROM oven/bun:1.3.9-slim
 
 WORKDIR /app
 
@@ -36,7 +36,7 @@ COPY --from=build /app/server server
 ENV NODE_ENV=production
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD ["/busybox/wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+  CMD bun -e "const r = await fetch('http://localhost:4000/health'); if (!r.ok) process.exit(1);"
 
 CMD ["./server"]
 
