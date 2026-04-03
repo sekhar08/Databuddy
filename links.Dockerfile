@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.6 AS build
+FROM oven/bun:1.3.4-slim AS build
 
 WORKDIR /app
 
@@ -28,16 +28,18 @@ RUN bun build \
 	--bytecode \
 	./src/index.ts
 
-FROM oven/bun:1.3.6-slim
+FROM oven/bun:1.3.4-distroless
 
 WORKDIR /app
 
 COPY --from=build /app/server server
+COPY healthcheck.ts healthcheck.ts
 
 ENV NODE_ENV=production
+ENV HEALTHCHECK_PORT=2500
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD bun -e "const r = await fetch('http://localhost:2500/health'); if (!r.ok) process.exit(1);"
+  CMD ["bun", "/app/healthcheck.ts"]
 
 CMD ["./server"]
 

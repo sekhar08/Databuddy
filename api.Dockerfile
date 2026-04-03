@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.9-slim AS builder
+FROM oven/bun:1.3.4-slim AS builder
 
 WORKDIR /app
 
@@ -26,7 +26,10 @@ EXPOSE 3001
 
 WORKDIR /app/apps/api
 
+COPY healthcheck.ts /app/healthcheck.ts
+ENV HEALTHCHECK_PORT=3001
+
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD bun -e "const r = await fetch('http://localhost:3001/health'); if (!r.ok) process.exit(1);"
+  CMD ["bun", "/app/healthcheck.ts"]
 
 CMD ["bun", "run", "src/index.ts"]
