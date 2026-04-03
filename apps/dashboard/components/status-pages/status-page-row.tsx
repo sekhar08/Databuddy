@@ -1,17 +1,6 @@
 "use client";
 
-import {
-	ArrowSquareOutIcon,
-	BrowserIcon,
-	CopyIcon,
-	DotsThreeIcon,
-	HeartbeatIcon,
-	PencilSimpleIcon,
-	TrashIcon,
-} from "@phosphor-icons/react";
-import Link from "next/link";
-import { useCallback } from "react";
-import { toast } from "sonner";
+import { TransferToOrgDialog } from "@/components/transfer-to-org-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { List } from "@/components/ui/composables/list";
@@ -22,9 +11,25 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { getStatusPageUrl } from "@/lib/app-url";
+import { orpc } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
+import {
+	ArrowSquareOutIcon,
+	BrowserIcon,
+	CopyIcon,
+	DotsThreeIcon,
+	HeartbeatIcon,
+	PencilSimpleIcon,
+	TrashIcon,
+} from "@phosphor-icons/react";
+import { useMutation } from "@tanstack/react-query";
+import Link from "next/link";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
 
 export interface StatusPage {
 	id: string;
@@ -41,14 +46,22 @@ interface StatusPageRowProps {
 	statusPage: StatusPage;
 	onEditAction: () => void;
 	onDeleteAction: () => void;
+	onTransferSuccessAction?: () => void;
 }
 
 function StatusPageActions({
 	statusPage,
 	onEditAction,
 	onDeleteAction,
+	onTransferSuccessAction,
 }: StatusPageRowProps) {
 	const url = getStatusPageUrl(statusPage.slug);
+	const [isTransferOpen, setIsTransferOpen] = useState(false);
+	const [includeMonitors, setIncludeMonitors] = useState(true);
+
+	const transferMutation = useMutation({
+		...orpc.statusPage.transfer.mutationOptions(),
+	});
 
 	const handleCopyUrl = useCallback(async () => {
 		try {
@@ -59,58 +72,111 @@ function StatusPageActions({
 		}
 	}, [url]);
 
+	const handleTransfer = async (targetOrganizationId: string) => {
+		try {
+			await transferMutation.mutateAsync({
+				statusPageId: statusPage.id,
+				targetOrganizationId,
+				includeMonitors,
+			});
+			toast.success("Status page transferred");
+			setIsTransferOpen(false);
+			onTransferSuccessAction?.();
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error
+					? error.message
+					: "Failed to transfer status page";
+			toast.error(errorMessage);
+		}
+	};
+
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button
-					aria-label="Status page actions"
-					className="size-8 opacity-50 hover:opacity-100 data-[state=open]:opacity-100"
-					data-dropdown-trigger
-					size="icon"
-					variant="ghost"
-				>
-					<DotsThreeIcon className="size-5" weight="bold" />
-				</Button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className="w-48">
-				<DropdownMenuItem asChild>
-					<Link
-						className="gap-2"
-						href={`/monitors/status-pages/${statusPage.id}`}
+		<>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						aria-label="Status page actions"
+						className="size-8 opacity-50 hover:opacity-100 data-[state=open]:opacity-100"
+						data-dropdown-trigger
+						size="icon"
+						variant="ghost"
 					>
+						<DotsThreeIcon className="size-5" weight="bold" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end" className="w-52">
+					<DropdownMenuItem asChild>
+						<Link
+							className="gap-2"
+							href={`/monitors/status-pages/${statusPage.id}`}
+						>
+							<PencilSimpleIcon className="size-4" weight="duotone" />
+							Manage Monitors
+						</Link>
+					</DropdownMenuItem>
+					<DropdownMenuItem className="gap-2" onClick={onEditAction}>
 						<PencilSimpleIcon className="size-4" weight="duotone" />
-						Manage Monitors
-					</Link>
-				</DropdownMenuItem>
-				<DropdownMenuItem className="gap-2" onClick={onEditAction}>
-					<PencilSimpleIcon className="size-4" weight="duotone" />
-					Edit Details
-				</DropdownMenuItem>
-				<DropdownMenuItem className="gap-2" onClick={handleCopyUrl}>
-					<CopyIcon className="size-4" weight="duotone" />
-					Copy URL
-				</DropdownMenuItem>
-				<DropdownMenuItem asChild>
-					<Link
+						Edit Details
+					</DropdownMenuItem>
+					<DropdownMenuItem className="gap-2" onClick={handleCopyUrl}>
+						<CopyIcon className="size-4" weight="duotone" />
+						Copy URL
+					</DropdownMenuItem>
+					<DropdownMenuItem asChild>
+						<Link
+							className="gap-2"
+							href={url}
+							rel="noopener noreferrer"
+							target="_blank"
+						>
+							<ArrowSquareOutIcon className="size-4" weight="duotone" />
+							View Page
+						</Link>
+					</DropdownMenuItem>
+					<DropdownMenuItem
 						className="gap-2"
-						href={url}
-						rel="noopener noreferrer"
-						target="_blank"
+						onClick={() => setIsTransferOpen(true)}
 					>
 						<ArrowSquareOutIcon className="size-4" weight="duotone" />
-						View Page
-					</Link>
-				</DropdownMenuItem>
-				<DropdownMenuSeparator />
-				<DropdownMenuItem
-					className="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
-					onClick={onDeleteAction}
-				>
-					<TrashIcon className="size-4" weight="duotone" />
-					Delete
-				</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
+						Transfer to Workspace
+					</DropdownMenuItem>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem
+						className="gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
+						onClick={onDeleteAction}
+					>
+						<TrashIcon className="size-4" weight="duotone" />
+						Delete
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+
+			<TransferToOrgDialog
+				currentOrganizationId={statusPage.organizationId}
+				description={`Move "${statusPage.name}" to a different workspace.`}
+				isPending={transferMutation.isPending}
+				onOpenChangeAction={setIsTransferOpen}
+				onTransferAction={handleTransfer}
+				open={isTransferOpen}
+				title="Transfer Status Page"
+				warning="The status page and its configuration will be transferred to {orgName}."
+			>
+				<div className="flex items-center justify-between rounded border p-3">
+					<Label
+						className="cursor-pointer text-sm"
+						htmlFor="include-monitors-row"
+					>
+						Include all linked monitors
+					</Label>
+					<Switch
+						checked={includeMonitors}
+						id="include-monitors-row"
+						onCheckedChange={setIncludeMonitors}
+					/>
+				</div>
+			</TransferToOrgDialog>
+		</>
 	);
 }
 
@@ -118,6 +184,7 @@ export function StatusPageRow({
 	statusPage,
 	onEditAction,
 	onDeleteAction,
+	onTransferSuccessAction,
 }: StatusPageRowProps) {
 	const hasMonitors = statusPage.monitorCount > 0;
 
@@ -196,6 +263,7 @@ export function StatusPageRow({
 					<StatusPageActions
 						onDeleteAction={onDeleteAction}
 						onEditAction={onEditAction}
+						onTransferSuccessAction={onTransferSuccessAction}
 						statusPage={statusPage}
 					/>
 				</List.Cell>

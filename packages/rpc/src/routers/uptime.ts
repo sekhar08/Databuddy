@@ -497,6 +497,57 @@ export const uptimeRouter = {
 			return { success: true, isPaused: true };
 		}),
 
+	transfer: monitorsProcedure
+		.route({
+			description:
+				"Transfers an uptime monitor to another organization. Requires update permission on source and create on target.",
+			method: "POST",
+			path: "/uptime/transfer",
+			summary: "Transfer monitor",
+			tags: ["Uptime"],
+		})
+		.input(
+			z.object({
+				scheduleId: z.string(),
+				targetOrganizationId: z.string(),
+			})
+		)
+		.output(z.object({ success: z.literal(true) }))
+		.handler(async ({ context, input }) => {
+			const schedule = await getScheduleAndAuthorize(input.scheduleId, context);
+
+			if (schedule.organizationId === input.targetOrganizationId) {
+				throw rpcError.badRequest(
+					"Monitor already belongs to this organization"
+				);
+			}
+
+			await withWorkspace(context, {
+				organizationId: input.targetOrganizationId,
+				resource: "website",
+				permissions: ["create"],
+			});
+
+			await db
+				.update(uptimeSchedules)
+				.set({
+					organizationId: input.targetOrganizationId,
+					updatedAt: new Date(),
+				})
+				.where(eq(uptimeSchedules.id, input.scheduleId));
+
+			logger.info(
+				{
+					scheduleId: input.scheduleId,
+					from: schedule.organizationId,
+					to: input.targetOrganizationId,
+				},
+				"Monitor transferred"
+			);
+
+			return { success: true };
+		}),
+
 	resumeSchedule: monitorsProcedure
 		.route({
 			description: "Resumes an uptime schedule. Legacy compatibility.",

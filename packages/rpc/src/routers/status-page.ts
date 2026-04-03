@@ -552,6 +552,82 @@ export const statusPageRouter = {
 			return { success: true };
 		}),
 
+	transfer: monitorsProcedure
+		.route({
+			method: "POST",
+			path: "/statusPage/transfer",
+			summary: "Transfer status page to another organization",
+			tags: ["StatusPage"],
+		})
+		.input(
+			z.object({
+				statusPageId: z.string(),
+				targetOrganizationId: z.string(),
+				includeMonitors: z.boolean().default(true),
+			})
+		)
+		.output(z.object({ success: z.literal(true) }))
+		.handler(async ({ context, input }) => {
+			const statusPage = await db.query.statusPages.findFirst({
+				where: eq(statusPages.id, input.statusPageId),
+				with: {
+					statusPageMonitors: {
+						columns: { uptimeScheduleId: true },
+					},
+				},
+			});
+
+			if (!statusPage) {
+				throw rpcError.notFound("StatusPage", input.statusPageId);
+			}
+
+			if (statusPage.organizationId === input.targetOrganizationId) {
+				throw rpcError.badRequest(
+					"Status page already belongs to this organization"
+				);
+			}
+
+			await withWorkspace(context, {
+				organizationId: statusPage.organizationId,
+				resource: "website",
+				permissions: ["update"],
+			});
+
+			await withWorkspace(context, {
+				organizationId: input.targetOrganizationId,
+				resource: "website",
+				permissions: ["create"],
+			});
+
+			await db
+				.update(statusPages)
+				.set({
+					organizationId: input.targetOrganizationId,
+					updatedAt: new Date(),
+				})
+				.where(eq(statusPages.id, input.statusPageId));
+
+			if (input.includeMonitors) {
+				const monitorIds = statusPage.statusPageMonitors.map(
+					(m: { uptimeScheduleId: string }) => m.uptimeScheduleId
+				);
+
+				if (monitorIds.length > 0) {
+					await db
+						.update(uptimeSchedules)
+						.set({
+							organizationId: input.targetOrganizationId,
+							updatedAt: new Date(),
+						})
+						.where(inArray(uptimeSchedules.id, monitorIds));
+				}
+			}
+
+			await invalidateCacheableWithArgs("status-page", [statusPage.slug]);
+
+			return { success: true };
+		}),
+
 	addMonitor: monitorsProcedure
 		.route({
 			method: "POST",

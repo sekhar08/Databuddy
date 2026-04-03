@@ -1,18 +1,7 @@
 "use client";
 
-import {
-	DotsThreeIcon,
-	HeartbeatIcon,
-	PauseIcon,
-	PencilSimpleIcon,
-	PlayIcon,
-	TrashIcon,
-} from "@phosphor-icons/react";
-import { useMutation } from "@tanstack/react-query";
-import Link from "next/link";
-import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { FaviconImage } from "@/components/analytics/favicon-image";
+import { TransferToOrgDialog } from "@/components/transfer-to-org-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { List } from "@/components/ui/composables/list";
@@ -31,6 +20,19 @@ import { formatDateOnly } from "@/lib/time";
 import { buildUptimeHeatmapDays } from "@/lib/uptime/heatmap-days";
 import { UptimeHeatmapStrip } from "@/lib/uptime/heatmap-strip";
 import { cn } from "@/lib/utils";
+import {
+	ArrowSquareOutIcon,
+	DotsThreeIcon,
+	HeartbeatIcon,
+	PauseIcon,
+	PencilSimpleIcon,
+	PlayIcon,
+	TrashIcon,
+} from "@phosphor-icons/react";
+import { useMutation } from "@tanstack/react-query";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 const GRANULARITY_LABELS: Record<string, string> = {
 	minute: "1 min",
@@ -48,6 +50,7 @@ const HEATMAP_DAYS = 30;
 interface MonitorRowProps {
 	schedule: {
 		id: string;
+		organizationId?: string;
 		websiteId: string | null;
 		url: string | null;
 		name: string | null;
@@ -74,6 +77,7 @@ function MonitorActions({
 	onRefetchAction,
 }: MonitorRowProps) {
 	const [isPausing, setIsPausing] = useState(false);
+	const [isTransferOpen, setIsTransferOpen] = useState(false);
 
 	const pauseMutation = useMutation({
 		...orpc.uptime.pauseSchedule.mutationOptions(),
@@ -83,6 +87,9 @@ function MonitorActions({
 	});
 	const deleteMutation = useMutation({
 		...orpc.uptime.deleteSchedule.mutationOptions(),
+	});
+	const transferMutation = useMutation({
+		...orpc.uptime.transfer.mutationOptions(),
 	});
 
 	const handleTogglePause = async () => {
@@ -117,50 +124,90 @@ function MonitorActions({
 		}
 	};
 
+	const handleTransfer = async (targetOrganizationId: string) => {
+		try {
+			await transferMutation.mutateAsync({
+				scheduleId: schedule.id,
+				targetOrganizationId,
+			});
+			toast.success("Monitor transferred");
+			setIsTransferOpen(false);
+			onRefetchAction();
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : "Failed to transfer monitor";
+			toast.error(errorMessage);
+		}
+	};
+
 	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button
-					aria-label="Monitor actions"
-					className="size-8 opacity-50 hover:opacity-100 data-[state=open]:opacity-100"
-					data-dropdown-trigger
-					size="icon"
-					variant="ghost"
-				>
-					<DotsThreeIcon className="size-5" weight="bold" />
-				</Button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className="w-44">
-				<DropdownMenuItem className="gap-2" onClick={onEditAction}>
-					<PencilSimpleIcon className="size-4" weight="duotone" />
-					Edit Monitor
-				</DropdownMenuItem>
-				<DropdownMenuItem
-					className="gap-2"
-					disabled={
-						isPausing || pauseMutation.isPending || resumeMutation.isPending
-					}
-					onClick={handleTogglePause}
-				>
-					{schedule.isPaused ? (
-						<PlayIcon className="size-4" weight="duotone" />
-					) : (
-						<PauseIcon className="size-4" weight="duotone" />
-					)}
-					{schedule.isPaused ? "Resume" : "Pause"}
-				</DropdownMenuItem>
-				<DropdownMenuSeparator />
-				<DropdownMenuItem
-					className="gap-2 text-destructive focus:text-destructive"
-					disabled={deleteMutation.isPending}
-					onClick={handleDelete}
-					variant="destructive"
-				>
-					<TrashIcon className="size-4 fill-destructive" weight="duotone" />
-					Delete Monitor
-				</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
+		<>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						aria-label="Monitor actions"
+						className="size-8 opacity-50 hover:opacity-100 data-[state=open]:opacity-100"
+						data-dropdown-trigger
+						size="icon"
+						variant="ghost"
+					>
+						<DotsThreeIcon className="size-5" weight="bold" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end" className="w-52">
+					<DropdownMenuItem className="gap-2" onClick={onEditAction}>
+						<PencilSimpleIcon className="size-4" weight="duotone" />
+						Edit Monitor
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						className="gap-2"
+						disabled={
+							isPausing || pauseMutation.isPending || resumeMutation.isPending
+						}
+						onClick={handleTogglePause}
+					>
+						{schedule.isPaused ? (
+							<PlayIcon className="size-4" weight="duotone" />
+						) : (
+							<PauseIcon className="size-4" weight="duotone" />
+						)}
+						{schedule.isPaused ? "Resume" : "Pause"}
+					</DropdownMenuItem>
+					{schedule.organizationId ? (
+						<DropdownMenuItem
+							className="gap-2"
+							onClick={() => setIsTransferOpen(true)}
+						>
+							<ArrowSquareOutIcon className="size-4" weight="duotone" />
+							Transfer to Workspace
+						</DropdownMenuItem>
+					) : null}
+					<DropdownMenuSeparator />
+					<DropdownMenuItem
+						className="gap-2 text-destructive focus:text-destructive"
+						disabled={deleteMutation.isPending}
+						onClick={handleDelete}
+						variant="destructive"
+					>
+						<TrashIcon className="size-4 fill-destructive" weight="duotone" />
+						Delete Monitor
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+
+			{schedule.organizationId ? (
+				<TransferToOrgDialog
+					currentOrganizationId={schedule.organizationId}
+					description="Move this monitor to a different workspace."
+					isPending={transferMutation.isPending}
+					onOpenChangeAction={setIsTransferOpen}
+					onTransferAction={handleTransfer}
+					open={isTransferOpen}
+					title="Transfer Monitor"
+					warning="All monitoring data and configuration will be transferred to {orgName}."
+				/>
+			) : null}
+		</>
 	);
 }
 

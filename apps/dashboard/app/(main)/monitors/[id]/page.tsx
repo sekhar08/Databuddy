@@ -1,26 +1,11 @@
 "use client";
 
-import {
-	ArrowClockwiseIcon,
-	ArrowLeftIcon,
-	GlobeIcon,
-	HeartbeatIcon,
-	PauseIcon,
-	PencilIcon,
-	PlayIcon,
-	TrashIcon,
-} from "@phosphor-icons/react";
-import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
-import dynamic from "next/dynamic";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { MonitorDetailLoading } from "@/app/(main)/monitors/_components/monitor-detail-loading";
 import { PageHeader } from "@/app/(main)/websites/_components/page-header";
 import { FaviconImage } from "@/components/analytics/favicon-image";
 import { EmptyState } from "@/components/empty-state";
 import { MonitorSheet } from "@/components/monitors/monitor-sheet";
+import { TransferToOrgDialog } from "@/components/transfer-to-org-dialog";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -40,6 +25,23 @@ import { fromNow, localDayjs } from "@/lib/time";
 import { LatencyChartChunkPlaceholder } from "@/lib/uptime/latency-chart-chunk-placeholder";
 import { UptimeHeatmap } from "@/lib/uptime/uptime-heatmap";
 import { cn } from "@/lib/utils";
+import {
+	ArrowClockwiseIcon,
+	ArrowLeftIcon,
+	ArrowSquareOutIcon,
+	GlobeIcon,
+	HeartbeatIcon,
+	PauseIcon,
+	PencilIcon,
+	PlayIcon,
+	TrashIcon,
+} from "@phosphor-icons/react";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
 	RecentActivity,
 	type RecentActivityCheck,
@@ -72,6 +74,7 @@ const granularityLabels: Record<string, string> = {
 
 interface ScheduleData {
 	id: string;
+	organizationId: string;
 	websiteId: string | null;
 	url: string;
 	name: string | null;
@@ -151,6 +154,7 @@ export default function MonitorDetailsPage() {
 	const router = useRouter();
 	const { dateRange } = useDateFilters();
 
+	const [isTransferOpen, setIsTransferOpen] = useState(false);
 	const [isSheetOpen, setIsSheetOpen] = useState(false);
 	const [editingSchedule, setEditingSchedule] = useState<{
 		id: string;
@@ -205,8 +209,9 @@ export default function MonitorDetailsPage() {
 	const deleteMutation = useMutation({
 		...orpc.uptime.deleteSchedule.mutationOptions(),
 	});
-	const togglePublicMutation = useMutation({
-		...orpc.statusPage.togglePublicMonitor.mutationOptions(),
+
+	const transferMutation = useMutation({
+		...orpc.uptime.transfer.mutationOptions(),
 	});
 
 	// --- Recent checks (paginated) ---
@@ -470,29 +475,24 @@ export default function MonitorDetailsPage() {
 		setIsRefreshing(false);
 	};
 
-	const handleTogglePublic = async () => {
+	const handleTransfer = async (targetOrganizationId: string) => {
 		if (!schedule) {
 			return;
 		}
 		try {
-			const result = await togglePublicMutation.mutateAsync({
+			await transferMutation.mutateAsync({
 				scheduleId: schedule.id,
-				isPublic: !schedule.isPublic,
+				targetOrganizationId,
 			});
-			await refetchSchedule();
-			toast.success(
-				result.isPublic
-					? "Monitor is now visible on the public status page"
-					: "Monitor removed from the public status page"
-			);
+			toast.success("Monitor transferred successfully");
+			setIsTransferOpen(false);
+			router.push("/monitors");
 		} catch (error) {
 			const errorMessage =
-				error instanceof Error ? error.message : "Failed to update visibility";
+				error instanceof Error ? error.message : "Failed to transfer monitor";
 			toast.error(errorMessage);
 		}
 	};
-
-	// --- Render ---
 
 	if (isLoadingSchedule) {
 		return <MonitorDetailLoading />;
@@ -569,21 +569,6 @@ export default function MonitorDetailsPage() {
 							/>
 						</Button>
 						<Button
-							disabled={togglePublicMutation.isPending}
-							onClick={handleTogglePublic}
-							size="sm"
-							type="button"
-							variant={schedule.isPublic ? "default" : "outline"}
-						>
-							<GlobeIcon size={16} weight="duotone" />
-							<span className="hidden sm:inline">
-								{schedule.isPublic ? "Public" : "Make public"}
-							</span>
-							<span className="sm:hidden">
-								{schedule.isPublic ? "Listed" : "List"}
-							</span>
-						</Button>
-						<Button
 							disabled={
 								isPausing || pauseMutation.isPending || resumeMutation.isPending
 							}
@@ -613,6 +598,16 @@ export default function MonitorDetailsPage() {
 						>
 							<PencilIcon size={16} weight="duotone" />
 							<span className="hidden sm:inline">Configure</span>
+						</Button>
+						<Button
+							aria-label="Transfer monitor"
+							onClick={() => setIsTransferOpen(true)}
+							size="sm"
+							type="button"
+							variant="outline"
+						>
+							<ArrowSquareOutIcon size={16} weight="duotone" />
+							<span className="hidden sm:inline">Transfer</span>
 						</Button>
 						<Button
 							aria-label="Delete monitor"
@@ -725,6 +720,17 @@ export default function MonitorDetailsPage() {
 					websiteId={schedule.websiteId || undefined}
 				/>
 			) : null}
+
+			<TransferToOrgDialog
+				currentOrganizationId={schedule.organizationId}
+				description={`Move "${displayName}" to a different workspace.`}
+				isPending={transferMutation.isPending}
+				onOpenChangeAction={setIsTransferOpen}
+				onTransferAction={handleTransfer}
+				open={isTransferOpen}
+				title="Transfer Monitor"
+				warning="All monitoring data and configuration will be transferred to {orgName}."
+			/>
 
 			<AlertDialog
 				onOpenChange={setIsDeleteDialogOpen}

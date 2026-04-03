@@ -5,11 +5,14 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { FeatureLockedPanel } from "@/components/feature-access-gate";
 import { PageNavigation } from "@/components/layout/page-navigation";
+import { TransferToOrgDialog } from "@/components/transfer-to-org-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { List } from "@/components/ui/composables/list";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFeatureAccess } from "@/hooks/use-feature-access";
 import { getStatusPageUrl } from "@/lib/app-url";
@@ -17,6 +20,7 @@ import { orpc } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import {
 	ArrowClockwiseIcon,
+	ArrowSquareOutIcon,
 	BrowserIcon,
 	HeartbeatIcon,
 	PlusIcon,
@@ -24,25 +28,32 @@ import {
 } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { AddMonitorDialog } from "./_components/add-monitor-dialog";
 import {
-	StatusPageMonitorRow,
 	type StatusPageMonitor,
+	StatusPageMonitorRow,
 } from "./_components/status-page-monitor-row";
 
 export default function StatusPageDetailsPage() {
 	const params = useParams();
+	const router = useRouter();
 	const statusPageId = params.id as string;
 	const queryClient = useQueryClient();
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
+	const [isTransferOpen, setIsTransferOpen] = useState(false);
+	const [includeMonitors, setIncludeMonitors] = useState(true);
 	const [monitorToRemove, setMonitorToRemove] = useState<string | null>(null);
 
 	const statusPageQuery = useQuery({
 		...orpc.statusPage.get.queryOptions({ input: { statusPageId } }),
 		enabled: !!statusPageId,
+	});
+
+	const transferMutation = useMutation({
+		...orpc.statusPage.transfer.mutationOptions(),
 	});
 
 	const removeMutation = useMutation({
@@ -67,6 +78,25 @@ export default function StatusPageDetailsPage() {
 		queryClient.invalidateQueries({
 			queryKey: orpc.statusPage.get.key({ input: { statusPageId } }),
 		});
+	};
+
+	const handleTransfer = async (targetOrganizationId: string) => {
+		try {
+			await transferMutation.mutateAsync({
+				statusPageId,
+				targetOrganizationId,
+				includeMonitors,
+			});
+			toast.success("Status page transferred successfully");
+			setIsTransferOpen(false);
+			router.push("/monitors/status-pages");
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error
+					? error.message
+					: "Failed to transfer status page";
+			toast.error(errorMessage);
+		}
 	};
 
 	const handleConfirmRemove = () => {
@@ -166,6 +196,14 @@ export default function StatusPageDetailsPage() {
 										)}
 									/>
 								</Button>
+								<Button
+									onClick={() => setIsTransferOpen(true)}
+									size="sm"
+									variant="outline"
+								>
+									<ArrowSquareOutIcon weight="duotone" />
+									<span className="hidden sm:inline">Transfer</span>
+								</Button>
 								<Button onClick={() => setIsDialogOpen(true)} size="sm">
 									<PlusIcon />
 									Add Monitor
@@ -259,6 +297,33 @@ export default function StatusPageDetailsPage() {
 					onConfirm={handleConfirmRemove}
 					title="Remove Monitor"
 				/>
+
+				{statusPage ? (
+					<TransferToOrgDialog
+						currentOrganizationId={statusPage.organizationId}
+						description={`Move "${statusPage.name}" to a different workspace.`}
+						isPending={transferMutation.isPending}
+						onOpenChangeAction={setIsTransferOpen}
+						onTransferAction={handleTransfer}
+						open={isTransferOpen}
+						title="Transfer Status Page"
+						warning="The status page and its configuration will be transferred to {orgName}."
+					>
+						<div className="flex items-center justify-between rounded border p-3">
+							<Label
+								className="cursor-pointer text-sm"
+								htmlFor="include-monitors-detail"
+							>
+								Include all linked monitors
+							</Label>
+							<Switch
+								checked={includeMonitors}
+								id="include-monitors-detail"
+								onCheckedChange={setIncludeMonitors}
+							/>
+						</div>
+					</TransferToOrgDialog>
+				) : null}
 			</div>
 		</ErrorBoundary>
 	);
