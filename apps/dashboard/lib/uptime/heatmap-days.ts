@@ -5,10 +5,19 @@ export interface UptimeHeatmapDay {
 	dateStr: string;
 	hasData: boolean;
 	uptime: number;
+	totalChecks: number;
+	successfulChecks: number;
+	downtimeSeconds: number;
 }
 
 export function buildUptimeHeatmapDays(
-	data: Array<{ date: string; uptime_percentage?: number }>,
+	data: Array<{
+		date: string;
+		uptime_percentage?: number;
+		total_checks?: number;
+		successful_checks?: number;
+		downtime_seconds?: number;
+	}>,
 	days: number
 ): UptimeHeatmapDay[] {
 	const dataByDate = new Map(
@@ -28,6 +37,9 @@ export function buildUptimeHeatmapDays(
 			dateStr,
 			hasData: !!dayData,
 			uptime: dayData?.uptime_percentage ?? 0,
+			totalChecks: dayData?.total_checks ?? 0,
+			successfulChecks: dayData?.successful_checks ?? 0,
+			downtimeSeconds: dayData?.downtime_seconds ?? 0,
 		});
 	}
 	return result;

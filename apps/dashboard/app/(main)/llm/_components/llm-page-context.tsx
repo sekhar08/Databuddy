@@ -43,8 +43,11 @@ export const DEFAULT_DATE_RANGE = {
 };
 
 export function LLMPageProvider({ children }: { children: React.ReactNode }) {
-	const { activeOrganization, activeOrganizationId, isLoading: isLoadingOrg } =
-		useOrganizationsContext();
+	const {
+		activeOrganization,
+		activeOrganizationId,
+		isLoading: isLoadingOrg,
+	} = useOrganizationsContext();
 	const { websites, isLoading: isLoadingWebsites } = useWebsitesLight();
 	const [selectedWebsiteId, setSelectedWebsiteId] = useState<string | null>(
 		null

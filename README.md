@@ -41,7 +41,7 @@ A comprehensive analytics and data management platform built with Next.js, TypeS
 - 📊 Funnel analysis
 - 📈 Cohort analysis // Soon
 - 🔄 A/B testing // Soon
-- 📈 Export capabilities // Soon
+- 📈 Export capabilities
 - 🔒 GDPR compliance
 - 🔐 Data encryption
 - 📊 API access

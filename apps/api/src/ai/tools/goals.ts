@@ -111,7 +111,7 @@ export function createGoalTools() {
 
 	const createGoalTool = tool({
 		description:
-			"Create a new goal to track single-step conversions. REQUIRES EXPLICIT USER CONFIRMATION before creating. Always show a preview first and ask the user to confirm before setting confirmed=true.",
+			"Create a new goal to track single-step conversions. Call with confirmed=false first to show a preview, then call again with confirmed=true only after the user explicitly confirms.",
 		inputSchema: z.object({
 			websiteId: z.string().describe("The website ID"),
 			name: z

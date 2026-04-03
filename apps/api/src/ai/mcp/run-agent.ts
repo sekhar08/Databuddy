@@ -50,9 +50,10 @@ export async function runMcpAgent(
 	]);
 
 	const memoryBlock = memoryCtx ? formatMemoryForPrompt(memoryCtx) : "";
-	const instructions = memoryBlock
-		? `${config.system}\n\n${memoryBlock}`
-		: config.system;
+	if (memoryBlock) {
+		config.system.content = `${config.system.content}\n\n${memoryBlock}`;
+	}
+	const instructions = config.system;
 
 	const mcpUserId = options.userId ?? options.apiKey?.userId;
 	const mcpTelemetryMetadata: Record<string, string> = {

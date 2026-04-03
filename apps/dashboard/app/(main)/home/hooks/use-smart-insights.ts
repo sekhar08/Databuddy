@@ -96,8 +96,8 @@ export function useSmartInsights() {
 		isOrgContextLoading ||
 		Boolean(
 			orgId &&
-			!(historyQuery.isFetched && aiQuery.isFetched) &&
-			!(historyQuery.isError && aiQuery.isError)
+				!(historyQuery.isFetched && aiQuery.isFetched) &&
+				!(historyQuery.isError && aiQuery.isError)
 		);
 
 	const isError =

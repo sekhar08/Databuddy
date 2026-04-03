@@ -111,6 +111,28 @@ export const getDataTool = tool({
 			.optional()
 			.describe("Website domain (optional, auto-fetched if not provided)"),
 	}),
+	inputExamples: [
+		{
+			input: {
+				websiteId: "ws_example",
+				queries: [
+					{ type: "summary_metrics", preset: "last_30d" },
+					{ type: "top_pages", preset: "last_30d" },
+					{ type: "top_referrers", preset: "last_30d" },
+				],
+			},
+		},
+		{
+			input: {
+				websiteId: "ws_example",
+				queries: [
+					{ type: "traffic", preset: "last_7d", timeUnit: "day" },
+					{ type: "device_type", preset: "last_7d" },
+					{ type: "country", preset: "last_7d", limit: 10 },
+				],
+			},
+		},
+	],
 	execute: async ({ websiteId, queries, websiteDomain }) => {
 		const batchStart = Date.now();
 		const domain = websiteDomain ?? (await getWebsiteDomain(websiteId));

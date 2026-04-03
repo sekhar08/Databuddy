@@ -1,6 +1,6 @@
 import { and, db, eq, member } from "@databuddy/db";
 import { cacheable } from "@databuddy/redis";
-import { Autumn as autumn } from "autumn-js";
+import { getAutumn } from "../lib/autumn-client";
 import { logger } from "../lib/logger";
 
 export interface BillingOwner {
@@ -13,7 +13,9 @@ export interface BillingOwner {
 const _getOrganizationOwnerId = async (
 	organizationId: string
 ): Promise<string | null> => {
-	if (!organizationId) return null;
+	if (!organizationId) {
+		return null;
+	}
 	try {
 		const orgMember = await db.query.member.findFirst({
 			where: and(
@@ -38,7 +40,9 @@ export async function getBillingCustomerId(
 	userId: string,
 	organizationId?: string | null
 ): Promise<string> {
-	if (!organizationId) return userId;
+	if (!organizationId) {
+		return userId;
+	}
 	const orgOwnerId = await getOrganizationOwnerId(organizationId);
 	return orgOwnerId ?? userId;
 }
@@ -87,16 +91,16 @@ export async function getBillingOwner(
 
 	let planId = "free";
 	try {
-		const customerResult = await autumn.customers.get(customerId);
-		const customer = customerResult.data;
+		const customer = await getAutumn().customers.getOrCreate({
+			customerId,
+		});
 
-		if (customer) {
-			const activeProduct = customer.products?.find(
-				(p) => p.status === "active"
-			);
-			if (activeProduct?.id) {
-				planId = String(activeProduct.id).toLowerCase();
-			}
+		const subs = customer.subscriptions;
+		const activeSub =
+			subs.find((s) => s.status === "active" && s.addOn === false) ??
+			subs.find((s) => s.status === "active");
+		if (activeSub?.planId) {
+			planId = String(activeSub.planId).toLowerCase();
 		}
 	} catch {
 		planId = "free";

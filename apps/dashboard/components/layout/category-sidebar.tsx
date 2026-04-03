@@ -74,12 +74,14 @@ export function CategorySidebar({
 						...baseConfig,
 						navigationMap: {
 							...baseConfig.navigationMap,
-							home: (!hasMounted || isLoadingWebsites)
-								? createLoadingWebsitesNavigation()
-								: createWebsitesNavigation(websites),
-							monitors: (!hasMounted || isLoadingMonitors)
-								? createLoadingMonitorsNavigation()
-								: createMonitorsNavigation(monitors),
+							home:
+								!hasMounted || isLoadingWebsites
+									? createLoadingWebsitesNavigation()
+									: createWebsitesNavigation(websites),
+							monitors:
+								!hasMounted || isLoadingMonitors
+									? createLoadingMonitorsNavigation()
+									: createMonitorsNavigation(monitors),
 						},
 					}
 				: baseConfig;

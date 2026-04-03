@@ -7,6 +7,7 @@ export interface RawComponentInput {
 
 export interface BaseComponentProps {
 	className?: string;
+	streaming?: boolean;
 }
 
 export interface ComponentDefinition<
@@ -30,7 +31,8 @@ export interface ParsedContent {
 
 export type ContentSegment =
 	| { type: "text"; content: string }
-	| { type: "component"; content: RawComponentInput };
+	| { type: "component"; content: RawComponentInput }
+	| { type: "streaming-component"; content: RawComponentInput };
 
 export interface ParsedSegments {
 	segments: ContentSegment[];
@@ -45,19 +47,14 @@ export interface ChartComponentProps extends BaseComponentProps {
 export interface TimeSeriesInput {
 	type: string;
 	title?: string;
-	data: {
-		x: string[];
-		[series: string]: string[] | number[];
-	};
+	series: string[];
+	rows: unknown[][];
 }
 
 export interface DistributionInput {
 	type: string;
 	title?: string;
-	data: {
-		labels: string[];
-		values: number[];
-	};
+	rows: unknown[][];
 }
 
 // Links types
@@ -194,18 +191,13 @@ export interface AnnotationPreviewInput {
 
 // Data Table types
 
-export interface DataTableColumn {
-	key: string;
-	header: string;
-	align?: "left" | "center" | "right";
-}
-
 export interface DataTableInput {
 	type: "data-table";
 	title?: string;
 	description?: string;
-	columns: DataTableColumn[];
-	rows: Record<string, string | number | boolean | null>[];
+	columns: string[];
+	align?: ("left" | "center" | "right")[];
+	rows: unknown[][];
 	footer?: string;
 }
 

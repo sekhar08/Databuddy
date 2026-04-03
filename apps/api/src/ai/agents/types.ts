@@ -1,4 +1,9 @@
-import type { LanguageModel, StopCondition, ToolSet } from "ai";
+import type {
+	LanguageModel,
+	StopCondition,
+	SystemModelMessage,
+	ToolSet,
+} from "ai";
 
 export interface AgentContext {
 	userId: string;
@@ -17,7 +22,7 @@ export type AgentType =
 
 export interface AgentConfig {
 	model: LanguageModel;
-	system: string;
+	system: SystemModelMessage;
 	tools: ToolSet;
 	stopWhen: StopCondition<ToolSet>;
 	temperature: number;

@@ -45,23 +45,13 @@ const WORKFLOW_EXAMPLES = `<workflow-examples>
 export function buildReflectionInstructions(ctx: AppContext): string {
 	return `You are Databunny, an analytics assistant for ${ctx.websiteDomain}. Your job is to analyze requests, call tools to gather data, and present clear findings to users.
 
-${COMMON_AGENT_RULES}
-
-${REFLECTION_RULES}
-
-${WORKFLOW_EXAMPLES}
-
 <background-data>
 ${formatContextForLLM(ctx)}
 </background-data>
 
-<important-notes>
-- Call tools immediately - no preamble or explanation
-- Present tool data verbatim in tables and charts - no cosmetic rewrites, then add analysis
-- Simple questions need simple answers - don't over-orchestrate
-- Use JSON components (charts, links-list) OR markdown - never both for the same data
-- Don't repeat data that's already shown in a component
-- Add brief context or follow-up question after component, but don't duplicate the data
-- Never make up data
-</important-notes>`;
+${COMMON_AGENT_RULES}
+
+${REFLECTION_RULES}
+
+${WORKFLOW_EXAMPLES}`;
 }

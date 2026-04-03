@@ -52,6 +52,7 @@ export function DataTableRenderer({
 	rows,
 	footer,
 	className,
+	streaming,
 }: DataTableProps) {
 	if (rows.length === 0) {
 		return (
@@ -106,7 +107,10 @@ export function DataTableRenderer({
 					<tbody>
 						{rows.map((row, rowIdx) => (
 							<tr
-								className="border-b transition-colors last:border-b-0 hover:bg-muted/50"
+								className={cn(
+									"border-b transition-colors last:border-b-0 hover:bg-muted/50",
+									streaming && rowIdx === rows.length - 1 && "animate-in fade-in duration-300"
+								)}
 								key={rowIdx}
 							>
 								{columns.map((column, colIdx) => (

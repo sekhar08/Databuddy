@@ -112,7 +112,7 @@ export function AgentInput() {
 						>
 							<Textarea
 								className={cn(
-									"min-h-0 resize-none border-0 bg-transparent px-3 pt-3 pb-0 text-base shadow-none",
+									"min-h-0 resize-none border-0 bg-transparent px-3 pt-3 pb-3 text-base shadow-none",
 									"focus-visible:border-0 focus-visible:bg-transparent focus-visible:shadow-none focus-visible:ring-0"
 								)}
 								maxRows={6}

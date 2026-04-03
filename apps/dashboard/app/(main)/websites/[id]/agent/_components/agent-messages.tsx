@@ -211,10 +211,12 @@ function renderMessagePart(
 							</MessageResponse>
 						);
 					}
+					// Both complete and streaming components render via AIComponent
 					return (
 						<AIComponent
 							input={segment.content}
 							key={`${key}-component-${idx}`}
+							streaming={segment.type === "streaming-component"}
 						/>
 					);
 				})}

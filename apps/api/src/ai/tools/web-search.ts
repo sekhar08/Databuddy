@@ -76,8 +76,15 @@ export const webSearchTool = tool({
 				responseLength: result.text.length,
 			});
 
+			// Sanitize web content before returning to the agent to prevent
+			// indirect prompt injection from adversarial web pages.
+			const sanitized = result.text.replace(
+				/<\/?[a-z_][a-z_0-9-]*(?:\s[^>]*)?\s*\/?>/gi,
+				""
+			);
+
 			return {
-				answer: result.text,
+				answer: sanitized,
 				query,
 				executionTime,
 			};

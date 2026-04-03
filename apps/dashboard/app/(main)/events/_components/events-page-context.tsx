@@ -52,8 +52,11 @@ export function EventsPageProvider({
 }: {
 	children: React.ReactNode;
 }) {
-	const { activeOrganization, activeOrganizationId, isLoading: isLoadingOrg } =
-		useOrganizationsContext();
+	const {
+		activeOrganization,
+		activeOrganizationId,
+		isLoading: isLoadingOrg,
+	} = useOrganizationsContext();
 	const { websites: rawWebsites, isLoading: isLoadingWebsites } =
 		useWebsitesLight();
 	const websites = useMemo(

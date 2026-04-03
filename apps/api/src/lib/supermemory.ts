@@ -167,20 +167,33 @@ export async function searchMemories(
 }
 
 /**
+ * Strip XML-like tags from memory content to prevent prompt injection
+ * via stored memories that flow back into system prompts.
+ */
+function sanitizeMemoryString(value: string): string {
+	return value.replace(/<\/?[a-z_][a-z_0-9-]*(?:\s[^>]*)?\s*\/?>/gi, "");
+}
+
+/**
  * Format memory context as a string block for injection into system prompts.
+ * Sanitizes all memory content to prevent stored prompt injection.
  */
 export function formatMemoryForPrompt(ctx: MemoryContext): string {
 	const parts: string[] = [];
 
 	if (ctx.staticProfile.length > 0) {
-		parts.push(`User profile:\n${ctx.staticProfile.join("\n")}`);
+		parts.push(
+			`User profile:\n${ctx.staticProfile.map(sanitizeMemoryString).join("\n")}`
+		);
 	}
 	if (ctx.dynamicProfile.length > 0) {
-		parts.push(`Recent context:\n${ctx.dynamicProfile.join("\n")}`);
+		parts.push(
+			`Recent context:\n${ctx.dynamicProfile.map(sanitizeMemoryString).join("\n")}`
+		);
 	}
 	if (ctx.relevantMemories.length > 0) {
 		parts.push(
-			`Relevant memories:\n${ctx.relevantMemories.filter(Boolean).join("\n")}`
+			`Relevant memories:\n${ctx.relevantMemories.filter(Boolean).map(sanitizeMemoryString).join("\n")}`
 		);
 	}
 

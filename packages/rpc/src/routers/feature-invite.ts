@@ -49,7 +49,15 @@ async function syncEmailToFlagRules(
 	const matchingFlags = await db.query.flags.findMany({
 		where: eq(flags.key, flagKey),
 		columns: { id: true, rules: true, websiteId: true, organizationId: true },
+		limit: 1000,
 	});
+
+	const updates: Array<{
+		id: string;
+		rules: UserRule[];
+		websiteId: string | null;
+		organizationId: string | null;
+	}> = [];
 
 	for (const flag of matchingFlags) {
 		const rules = (flag.rules ?? []) as UserRule[];
@@ -74,15 +82,20 @@ async function syncEmailToFlagRules(
 			});
 		}
 
-		await db.update(flags).set({ rules }).where(eq(flags.id, flag.id));
-
-		await invalidateFlagCache(
-			flag.id,
-			flag.websiteId,
-			flag.organizationId,
-			flagKey
-		);
+		updates.push({
+			id: flag.id,
+			rules,
+			websiteId: flag.websiteId,
+			organizationId: flag.organizationId,
+		});
 	}
+
+	await Promise.all(
+		updates.map(async ({ id, rules, websiteId, organizationId }) => {
+			await db.update(flags).set({ rules }).where(eq(flags.id, id));
+			await invalidateFlagCache(id, websiteId, organizationId, flagKey);
+		})
+	);
 }
 
 // ── Schemas ─────────────────────────────────────────────────────────
@@ -151,6 +164,7 @@ export const featureInviteRouter = {
 				const existing = await tx.query.featureInvite.findMany({
 					where: userLinksWhere(input.flagKey, userId),
 					orderBy: [desc(featureInvite.createdAt)],
+					limit: MAX_LINKS_PER_FLAG,
 				});
 
 				const toCreate = MAX_LINKS_PER_FLAG - existing.length;
@@ -171,6 +185,7 @@ export const featureInviteRouter = {
 				return tx.query.featureInvite.findMany({
 					where: userLinksWhere(input.flagKey, userId),
 					orderBy: [desc(featureInvite.createdAt)],
+					limit: MAX_LINKS_PER_FLAG,
 				});
 			});
 		}),
@@ -193,6 +208,7 @@ export const featureInviteRouter = {
 			return db.query.featureInvite.findMany({
 				where: userLinksWhere(input.flagKey, userId),
 				orderBy: [desc(featureInvite.createdAt)],
+				limit: MAX_LINKS_PER_FLAG,
 			});
 		}),
 
@@ -312,6 +328,7 @@ export const featureInviteRouter = {
 			const links = await db.query.featureInvite.findMany({
 				where: userLinksWhere(input.flagKey, userId),
 				columns: { id: true },
+				limit: MAX_LINKS_PER_FLAG,
 			});
 
 			const used = links.length;

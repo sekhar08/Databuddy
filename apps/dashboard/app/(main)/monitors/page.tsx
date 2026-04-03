@@ -1,5 +1,17 @@
 "use client";
 
+import { PageHeader } from "@/app/(main)/websites/_components/page-header";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { FeatureAccessGate } from "@/components/feature-access-gate";
+import { MonitorRow } from "@/components/monitors/monitor-row";
+import { MonitorSheet } from "@/components/monitors/monitor-sheet";
+import { FeatureInviteDialog } from "@/components/organizations/feature-invite-dialog";
+import { Button } from "@/components/ui/button";
+import { List } from "@/components/ui/composables/list";
+import { useFeatureAccess } from "@/hooks/use-feature-access";
+import type { ListQuerySlice } from "@/lib/list-query-outcome";
+import { orpc } from "@/lib/orpc";
+import { cn } from "@/lib/utils";
 import {
 	ArrowClockwiseIcon,
 	HeartbeatIcon,
@@ -8,28 +20,16 @@ import {
 } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Suspense, useState } from "react";
-import { PageHeader } from "@/app/(main)/websites/_components/page-header";
-import { List } from "@/components/ui/composables/list";
-import { ErrorBoundary } from "@/components/error-boundary";
-import { FeatureAccessGate } from "@/components/feature-access-gate";
-import { MonitorRow } from "@/components/monitors/monitor-row";
-import { MonitorSheet } from "@/components/monitors/monitor-sheet";
-import { FeatureInviteDialog } from "@/components/organizations/feature-invite-dialog";
-import { Button } from "@/components/ui/button";
-import { useFeatureAccess } from "@/hooks/use-feature-access";
-import type { ListQuerySlice } from "@/lib/list-query-outcome";
-import { orpc } from "@/lib/orpc";
-import { cn } from "@/lib/utils";
 
 export interface Monitor {
 	id: string;
+	organizationId: string;
 	websiteId: string | null;
 	url: string | null;
 	name: string | null;
 	granularity: string;
 	cron: string;
 	isPaused: boolean;
-	isPublic: boolean;
 	createdAt: Date | string;
 	updatedAt: Date | string;
 	website: {
@@ -52,7 +52,6 @@ export default function MonitorsPage() {
 		url: string;
 		name?: string | null;
 		granularity: string;
-		isPublic?: boolean;
 		jsonParsingConfig?: {
 			enabled: boolean;
 		} | null;
@@ -74,7 +73,6 @@ export default function MonitorsPage() {
 			url: schedule.url ?? "",
 			name: schedule.name,
 			granularity: schedule.granularity,
-			isPublic: schedule.isPublic,
 			jsonParsingConfig: schedule.jsonParsingConfig,
 		});
 		setIsSheetOpen(true);

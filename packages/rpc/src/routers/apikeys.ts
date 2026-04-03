@@ -107,7 +107,7 @@ async function verifyOrganizationAccess(
 			headers: ctx.headers,
 			body: {
 				organizationId,
-				permissions: { website: ["configure"] },
+				permissions: { website: ["update"] },
 			},
 		});
 

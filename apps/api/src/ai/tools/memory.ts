@@ -6,6 +6,18 @@ import {
 	storeConversation,
 } from "../../lib/supermemory";
 
+const MAX_MEMORY_LENGTH = 2000;
+
+/**
+ * Sanitize content before storing or returning memory to prevent
+ * stored prompt injection (malicious payloads persisted and retrieved later).
+ */
+function sanitizeMemoryContent(value: string): string {
+	let cleaned = value.slice(0, MAX_MEMORY_LENGTH);
+	cleaned = cleaned.replace(/<\/?[a-z_][a-z_0-9-]*(?:\s[^>]*)?\s*\/?>/gi, "");
+	return cleaned;
+}
+
 function getAgentContext(options: unknown): {
 	userId: string | null;
 	apiKeyId: string | null;
@@ -56,7 +68,7 @@ export function createMemoryTools(): Record<string, Tool> {
 				return {
 					found: true,
 					memories: results.map((r) => ({
-						content: r.memory,
+						content: sanitizeMemoryContent(r.memory),
 						relevance: Math.round(r.similarity * 100),
 					})),
 				};
@@ -80,8 +92,9 @@ export function createMemoryTools(): Record<string, Tool> {
 			}),
 			execute: (args, options) => {
 				const { userId, apiKeyId } = getAgentContext(options);
+				const sanitized = sanitizeMemoryContent(args.content);
 				storeConversation(
-					[{ role: "assistant", content: args.content }],
+					[{ role: "assistant", content: sanitized }],
 					userId,
 					apiKeyId,
 					{ category: args.category ?? "insight" }

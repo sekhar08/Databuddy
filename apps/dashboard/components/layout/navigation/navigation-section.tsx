@@ -1,3 +1,5 @@
+import { useBillingContext } from "@/components/providers/billing-provider";
+import type { useAccordionStates } from "@/hooks/use-persistent-state";
 import { useFlags } from "@databuddy/sdk/react";
 import { FEATURE_METADATA } from "@databuddy/shared/types/features";
 import { CaretDownIcon } from "@phosphor-icons/react";
@@ -5,11 +7,17 @@ import clsx from "clsx";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import type { ReadonlyURLSearchParams } from "next/navigation";
 import { memo } from "react";
-import { useBillingContext } from "@/components/providers/billing-provider";
-import type { useAccordionStates } from "@/hooks/use-persistent-state";
-import { NavigationItem } from "./navigation-item";
 import { isNavItemActive } from "./nav-item-active";
+import { NavigationItem } from "./navigation-item";
 import type { NavigationSection as NavigationSectionType } from "./types";
+
+/** Keys must differ when href repeats (e.g. overview + loading rows) or when labels repeat. */
+function navItemKey(
+	sectionTitle: string,
+	item: { href: string; name: string }
+): string {
+	return `${sectionTitle}::${item.href}::${item.name}`;
+}
 
 interface FeatureState {
 	isLocked: boolean;
@@ -74,7 +82,7 @@ export const NavigationSection = memo(function NavigationSectionComponent({
 		for (const item of visibleItems) {
 			if (item.gatedFeature) {
 				const locked = !isFeatureEnabled(item.gatedFeature);
-				states[item.name] = {
+				states[navItemKey(title, item)] = {
 					isLocked: locked,
 					lockedPlanName:
 						FEATURE_METADATA[item.gatedFeature]?.minPlan?.toUpperCase() ?? null,
@@ -126,9 +134,9 @@ export const NavigationSection = memo(function NavigationSectionComponent({
 						>
 							<motion.div className="text-sm">
 								{visibleItems.map((item) => {
-									const state = featureStates[item.name];
+									const state = featureStates[navItemKey(title, item)];
 									return (
-										<div key={item.name}>
+										<div key={navItemKey(title, item)}>
 											<NavigationItem
 												alpha={item.alpha}
 												badge={item.badge}

@@ -85,7 +85,8 @@ function isValidPreferences(value: unknown): value is AllPreferences {
 			return false;
 		}
 		return (
-			isValidChartSeriesKind(val.chartType) && isValidStepType(val.chartStepType)
+			isValidChartSeriesKind(val.chartType) &&
+			isValidStepType(val.chartStepType)
 		);
 	});
 }
