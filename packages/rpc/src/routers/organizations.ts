@@ -1,8 +1,8 @@
 import { and, db, desc, eq, gt, invitation, organization } from "@databuddy/db";
 import { getPendingInvitationsSchema } from "@databuddy/validation";
-import { Autumn as autumn } from "autumn-js";
 import { z } from "zod";
 import { rpcError } from "../errors";
+import { getAutumn } from "../lib/autumn-client";
 import { logger } from "../lib/logger";
 import { protectedProcedure, publicProcedure } from "../orpc";
 import { withWorkspace } from "../procedures/with-workspace";
@@ -103,7 +103,7 @@ export const organizationsRouter = {
 					.orderBy(desc(invitation.expiresAt));
 
 				return invitations;
-			} catch (error) {
+			} catch {
 				throw rpcError.internal("Failed to fetch pending invitations");
 			}
 		}),
@@ -174,30 +174,24 @@ export const organizationsRouter = {
 				await getBillingOwner(context.user.id, context.organizationId);
 
 			try {
-				const checkResult = await autumn.check({
-					customer_id: customerId,
-					feature_id: "events",
+				const response = await getAutumn().check({
+					customerId,
+					featureId: "events",
 				});
 
-				const data = checkResult.data;
-
-				if (!data) {
-					throw rpcError.internal("Failed to retrieve usage data");
-				}
-				const used = data.usage ?? 0;
-				const usageLimit = data.usage_limit ?? 0;
-				const unlimited = data.unlimited ?? false;
-				const balance = data.balance ?? 0;
-				const includedUsage = data.included_usage ?? 0;
-				const overageAllowed = data.overage_allowed ?? false;
-
-				const remaining = unlimited ? null : Math.max(0, usageLimit - used);
+				const b = response.balance;
+				const unlimited = b?.unlimited ?? false;
+				const used = b?.usage ?? 0;
+				const granted = b?.granted ?? 0;
+				const includedUsage = granted;
+				const overageAllowed = b?.overageAllowed ?? false;
+				const remaining = unlimited ? null : Math.max(0, b?.remaining ?? 0);
 
 				return {
 					used,
-					limit: unlimited ? null : usageLimit,
+					limit: unlimited ? null : granted,
 					unlimited,
-					balance,
+					balance: b?.remaining ?? 0,
 					remaining,
 					includedUsage,
 					overageAllowed,
@@ -290,33 +284,24 @@ export const organizationsRouter = {
 			}
 
 			try {
-				const customerResult = await autumn.customers.get(customerId);
-				const customer = customerResult.data;
+				const customer = await getAutumn().customers.getOrCreate({
+					customerId,
+				});
 
-				if (!customer) {
-					return {
-						planId: "free",
-						isOrganization,
-						canUserUpgrade,
-						hasActiveSubscription: false,
-						...debugInfo,
-					};
-				}
+				const subs = customer.subscriptions;
+				const activeSub =
+					subs.find((s) => s.status === "active" && s.addOn === false) ??
+					subs.find((s) => s.status === "active");
 
-				const activeProduct = customer.products?.find(
-					(p) => p.status === "active"
-				);
-
-				// Normalize product ID to lowercase for consistency
-				const planId = activeProduct?.id
-					? String(activeProduct.id).toLowerCase()
+				const planId = activeSub?.planId
+					? String(activeSub.planId).toLowerCase()
 					: "free";
 
 				return {
 					planId,
 					isOrganization,
 					canUserUpgrade,
-					hasActiveSubscription: Boolean(activeProduct),
+					hasActiveSubscription: Boolean(activeSub),
 					...debugInfo,
 				};
 			} catch (error) {

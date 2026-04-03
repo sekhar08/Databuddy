@@ -1,5 +1,5 @@
+import { getAutumn } from "@databuddy/rpc";
 import { captureError, record } from "@lib/tracing";
-import { Autumn as autumn } from "autumn-js";
 import { useLogger } from "evlog/elysia";
 
 type BillingResult = { allowed: true } | { exceeded: true; response: Response };
@@ -13,30 +13,29 @@ export function checkAutumnUsage(
 		const log = useLogger();
 
 		try {
-			const result = await record("autumn.check", () =>
-				autumn.check({
-					customer_id: customerId,
-					feature_id: featureId,
-					send_event: true,
-					// @ts-expect-error autumn types are not up to date
+			const response = await record("autumn.check", () =>
+				getAutumn().check({
+					customerId,
+					featureId,
+					sendEvent: true,
 					properties,
 				})
 			);
-			const data = result.data;
+			const b = response.balance;
 
-			if (data) {
+			if (b) {
 				log.set({
 					billing: {
 						allowed: true,
-						usage: data.usage,
-						usageLimit: data.usage_limit,
-						includedUsage: data.included_usage,
-						unlimited: data.unlimited,
+						usage: b.usage,
+						usageLimit: b.granted,
+						includedUsage: b.granted,
+						unlimited: b.unlimited,
 					},
 				});
-				const usage = data.usage ?? 0;
-				const usageLimit = data.usage_limit ?? data.included_usage ?? 0;
-				const isUnlimited = data.unlimited ?? false;
+				const usage = b.usage ?? 0;
+				const usageLimit = b.granted ?? 0;
+				const isUnlimited = b.unlimited ?? false;
 				const usageExceeds150Percent =
 					!isUnlimited && usageLimit > 0 && usage >= usageLimit * 1.5;
 

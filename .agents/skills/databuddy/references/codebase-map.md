@@ -83,6 +83,7 @@ Use this file when the task spans multiple packages or when the right edit locat
 - Shared oRPC contract layer between dashboard and backend
 - Exposes `appRouter`, `createRPCContext`, auth-aware procedures, workspace guards, billing helpers, and export logic
 - If a dashboard mutation or query changes shape, this package is usually part of the change
+- **Autumn (`autumn-js` ≥1.2.4, workspace catalog)**: Use `getAutumn()` from [`packages/rpc/src/lib/autumn-client.ts`](/Users/iza/Dev/Databuddy/packages/rpc/src/lib/autumn-client.ts) (also re-exported from `@databuddy/rpc`). `check({ customerId, featureId, sendEvent?, properties? })` returns `CheckResponse` with **nested `balance`** (`usage`, `granted`, `remaining`, `unlimited`, `overageAllowed`) — not `{ data, error }` and not snake_case params. `customers.get` is gone; use `customers.getOrCreate({ customerId })`. Active plan: `customer.subscriptions` (not `products`).
 
 ### `packages/auth`
 
