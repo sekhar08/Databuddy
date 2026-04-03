@@ -35,7 +35,7 @@
     "test:coverage": "dotenv -- bun test --coverage ./apps",
     "lint": "bunx ultracite@latest check",
     "format": "bunx ultracite@latest fix",
-    "check-types": "tsgo --noEmit --project .",
+    "check-types": "dotenv -- turbo run check-types",
     "generate-db": "turbo run generate --filter=@databuddy/db",
     "db:studio": "dotenv -- turbo run db:studio",
     "clickhouse:init": "dotenv -- turbo run clickhouse:init",
