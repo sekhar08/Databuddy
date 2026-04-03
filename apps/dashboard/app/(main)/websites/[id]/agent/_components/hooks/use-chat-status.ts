@@ -33,7 +33,11 @@ function findActiveToolName(message: UIMessage): string | null {
 	for (let i = message.parts.length - 1; i >= 0; i--) {
 		const part = message.parts[i];
 		if (part.type?.startsWith("tool-")) {
-			const toolPart = part as { type: string; input?: Record<string, unknown>; output?: unknown };
+			const toolPart = part as {
+				type: string;
+				input?: Record<string, unknown>;
+				output?: unknown;
+			};
 			const toolName = part.type.replace(TOOL_PREFIX_REGEX, "");
 			if (!toolPart.output) {
 				return formatToolLabel(toolName, toolPart.input ?? {});

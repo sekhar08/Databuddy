@@ -1,0 +1,287 @@
+import {
+	CheckCircleIcon,
+	MinusCircleIcon,
+	WarningCircleIcon,
+	XCircleIcon,
+} from "@phosphor-icons/react/ssr";
+import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import { LastChecked } from "./last-checked";
+import { MonitorRowInteractive } from "./monitor-row-interactive";
+
+// ── Root ─────────────────────────────────────────────────────────────────
+
+interface StatusRootProps {
+	children: ReactNode;
+	className?: string;
+}
+
+function StatusRoot({ children, className }: StatusRootProps) {
+	return (
+		<div className={cn("space-y-6", className)} data-slot="status-page">
+			{children}
+		</div>
+	);
+}
+
+// ── Header ───────────────────────────────────────────────────────────────
+
+interface StatusHeaderProps {
+	name: string;
+	description?: string;
+	children?: ReactNode;
+	className?: string;
+}
+
+function StatusHeader({
+	name,
+	description = "System status and uptime",
+	children,
+	className,
+}: StatusHeaderProps) {
+	return (
+		<div
+			className={cn("flex items-center gap-3.5", className)}
+			data-slot="status-header"
+		>
+			<div>
+				<h1 className="text-balance font-semibold text-2xl tracking-tight">
+					{name}
+				</h1>
+				<p className="mt-0.5 text-pretty text-muted-foreground text-sm">
+					{description}
+				</p>
+			</div>
+			{children}
+		</div>
+	);
+}
+
+// ── Banner ───────────────────────────────────────────────────────────────
+
+const BANNER_CONFIG = {
+	operational: {
+		label: "All Systems Operational",
+		bgClass: "bg-emerald-500/10 border-emerald-500/20",
+		textClass: "text-emerald-600 dark:text-emerald-400",
+		dotClass: "bg-emerald-500",
+		Icon: CheckCircleIcon,
+		pulse: true,
+	},
+	degraded: {
+		label: "Partial System Outage",
+		bgClass: "bg-amber-500/10 border-amber-500/20",
+		textClass: "text-amber-600 dark:text-amber-400",
+		dotClass: "bg-amber-500",
+		Icon: WarningCircleIcon,
+		pulse: false,
+	},
+	outage: {
+		label: "Major System Outage",
+		bgClass: "bg-red-500/10 border-red-500/20",
+		textClass: "text-red-600 dark:text-red-400",
+		dotClass: "bg-red-500",
+		Icon: XCircleIcon,
+		pulse: false,
+	},
+} as const;
+
+interface StatusBannerProps {
+	status: "operational" | "degraded" | "outage";
+	className?: string;
+}
+
+function StatusBanner({ status, className }: StatusBannerProps) {
+	const config = BANNER_CONFIG[status];
+
+	return (
+		<div
+			className={cn(
+				"flex items-center gap-3 rounded border p-4",
+				config.bgClass,
+				className
+			)}
+			data-slot="status-banner"
+		>
+			<div className="relative flex shrink-0 items-center justify-center">
+				{config.pulse ? (
+					<span
+						className={cn(
+							"absolute size-6 animate-ping rounded-full opacity-20",
+							config.dotClass
+						)}
+					/>
+				) : null}
+				<config.Icon
+					className={cn("relative size-6 shrink-0", config.textClass)}
+					weight="fill"
+				/>
+			</div>
+			<span className={cn("font-semibold text-sm", config.textClass)}>
+				{config.label}
+			</span>
+		</div>
+	);
+}
+
+// ── Section ──────────────────────────────────────────────────────────────
+
+interface StatusSectionProps {
+	title: string;
+	children: ReactNode;
+	action?: ReactNode;
+	className?: string;
+}
+
+function StatusSection({
+	title,
+	children,
+	action,
+	className,
+}: StatusSectionProps) {
+	return (
+		<div className={className} data-slot="status-section">
+			<div className="flex items-center justify-between">
+				<h2 className="font-semibold text-sm">{title}</h2>
+				{action}
+			</div>
+			<div className="mt-3 space-y-3">{children}</div>
+		</div>
+	);
+}
+
+// ── Monitor card ─────────────────────────────────────────────────────────
+
+const MONITOR_STATUS = {
+	up: {
+		Icon: CheckCircleIcon,
+		className: "text-emerald-500",
+		label: "Operational",
+	},
+	degraded: {
+		Icon: WarningCircleIcon,
+		className: "text-amber-500",
+		label: "Degraded",
+	},
+	down: { Icon: XCircleIcon, className: "text-red-500", label: "Down" },
+	unknown: {
+		Icon: MinusCircleIcon,
+		className: "text-muted-foreground",
+		label: "Unknown",
+	},
+} as const;
+
+interface DailyData {
+	date: string;
+	uptime_percentage?: number;
+	avg_response_time?: number;
+	p95_response_time?: number;
+}
+
+interface StatusMonitorCardProps {
+	id: string;
+	anchorId: string;
+	name: string;
+	domain?: string;
+	currentStatus: "up" | "down" | "degraded" | "unknown";
+	uptimePercentage?: number;
+	dailyData: DailyData[];
+	days: number;
+	lastCheckedAt: string | null;
+}
+
+function StatusMonitorCard({
+	id,
+	anchorId,
+	name,
+	domain,
+	currentStatus,
+	uptimePercentage,
+	dailyData,
+	days,
+	lastCheckedAt,
+}: StatusMonitorCardProps) {
+	const statusConfig = MONITOR_STATUS[currentStatus];
+	const hasLatencyData = dailyData.some(
+		(d) => d.avg_response_time != null || d.p95_response_time != null
+	);
+
+	return (
+		<div
+			className="scroll-mt-20 overflow-hidden rounded border bg-card"
+			data-slot="status-monitor-card"
+			id={anchorId}
+		>
+			<div className="flex items-center justify-between px-4 pt-4 pb-3">
+				<div className="flex items-center gap-2.5 overflow-hidden">
+					<statusConfig.Icon
+						className={cn("size-5 shrink-0", statusConfig.className)}
+						weight="fill"
+					/>
+					<div className="min-w-0">
+						<p className="truncate font-medium text-sm">{name}</p>
+						{domain && (
+							<p className="truncate text-muted-foreground text-xs">{domain}</p>
+						)}
+					</div>
+				</div>
+				<div className="shrink-0 text-right">
+					{uptimePercentage !== undefined && (
+						<p className="font-medium font-mono text-sm tabular-nums">
+							{uptimePercentage.toFixed(2)}%
+						</p>
+					)}
+					{lastCheckedAt ? <LastChecked timestamp={lastCheckedAt} /> : null}
+				</div>
+			</div>
+
+			<MonitorRowInteractive
+				dailyData={dailyData}
+				days={days}
+				hasLatencyData={hasLatencyData}
+				hasUptimeData={uptimePercentage !== undefined}
+				id={id}
+			/>
+		</div>
+	);
+}
+
+// ── Incidents ────────────────────────────────────────────────────────────
+
+function StatusIncidents({ className }: { className?: string }) {
+	return (
+		<div
+			className={cn("rounded border bg-card p-6", className)}
+			data-slot="status-incidents"
+		>
+			<h2 className="text-balance font-semibold text-sm">Recent Incidents</h2>
+			<div className="mt-4 flex items-center gap-2.5 text-muted-foreground">
+				<CheckCircleIcon
+					className="size-4 shrink-0 text-emerald-500"
+					weight="fill"
+				/>
+				<p className="text-pretty text-sm">
+					No incidents reported in the last 90 days.
+				</p>
+			</div>
+		</div>
+	);
+}
+
+// ── Compound export ──────────────────────────────────────────────────────
+
+StatusRoot.displayName = "Status";
+
+export const Status: typeof StatusRoot & {
+	Banner: typeof StatusBanner;
+	Header: typeof StatusHeader;
+	Incidents: typeof StatusIncidents;
+	MonitorCard: typeof StatusMonitorCard;
+	Section: typeof StatusSection;
+} = Object.assign(StatusRoot, {
+	Banner: StatusBanner,
+	Header: StatusHeader,
+	Incidents: StatusIncidents,
+	MonitorCard: StatusMonitorCard,
+	Section: StatusSection,
+});

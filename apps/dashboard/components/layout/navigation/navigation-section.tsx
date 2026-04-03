@@ -7,8 +7,8 @@ import type { ReadonlyURLSearchParams } from "next/navigation";
 import { memo } from "react";
 import { useBillingContext } from "@/components/providers/billing-provider";
 import type { useAccordionStates } from "@/hooks/use-persistent-state";
-import { NavigationItem } from "./navigation-item";
 import { isNavItemActive } from "./nav-item-active";
+import { NavigationItem } from "./navigation-item";
 import type { NavigationSection as NavigationSectionType } from "./types";
 
 interface FeatureState {

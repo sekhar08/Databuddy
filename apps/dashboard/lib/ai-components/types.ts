@@ -30,7 +30,8 @@ export interface ParsedContent {
 
 export type ContentSegment =
 	| { type: "text"; content: string }
-	| { type: "component"; content: RawComponentInput };
+	| { type: "component"; content: RawComponentInput }
+	| { type: "streaming-component"; content: RawComponentInput };
 
 export interface ParsedSegments {
 	segments: ContentSegment[];

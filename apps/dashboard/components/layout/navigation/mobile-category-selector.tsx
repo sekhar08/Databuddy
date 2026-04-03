@@ -5,7 +5,6 @@ import { useFlags } from "@databuddy/sdk/react";
 import { CaretDownIcon } from "@phosphor-icons/react";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
-import { useHasMounted } from "@/hooks/use-has-mounted";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -13,6 +12,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useHasMounted } from "@/hooks/use-has-mounted";
 import { useWebsitesLight } from "@/hooks/use-websites";
 import { cn } from "@/lib/utils";
 import {

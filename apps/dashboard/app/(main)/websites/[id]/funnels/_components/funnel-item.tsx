@@ -6,8 +6,8 @@ import {
 	PencilSimpleIcon,
 	TrashIcon,
 } from "@phosphor-icons/react";
-import { List } from "@/components/ui/composables/list";
 import { Button } from "@/components/ui/button";
+import { List } from "@/components/ui/composables/list";
 import {
 	DropdownMenu,
 	DropdownMenuContent,

@@ -1,6 +1,7 @@
 import { type LanguageModel, stepCountIs } from "ai";
 import type { AppContext } from "../config/context";
 import { models } from "../config/models";
+import { cachedSystemPrompt } from "../config/prompt-cache";
 import { buildAnalyticsInstructions } from "../prompts/analytics";
 import { createAnnotationTools } from "../tools/annotations";
 import { executeQueryBuilderTool } from "../tools/execute-query-builder";
@@ -46,10 +47,10 @@ export function createConfig(context: AgentContext): AgentConfig {
 
 	return {
 		model: models.analytics as LanguageModel,
-		system: buildAnalyticsInstructions(appContext),
+		system: cachedSystemPrompt(buildAnalyticsInstructions(appContext)),
 		tools: createTools(),
 		stopWhen: stepCountIs(20),
-		temperature: 0.3,
+		temperature: 0.1,
 		experimental_context: appContext,
 	};
 }

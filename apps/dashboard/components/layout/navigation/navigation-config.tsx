@@ -4,6 +4,7 @@ import {
 	ArrowSquareOutIcon,
 	BellIcon,
 	BookOpenIcon,
+	BrowserIcon,
 	BugIcon,
 	BuildingsIcon,
 	CalendarIcon,
@@ -269,6 +270,10 @@ export const billingNavigation: NavigationSection[] = [
 	]),
 ];
 
+const statusPagesSection = createNavSection("Status Pages", BrowserIcon, [
+	createNavItem("All Pages", GlobeSimpleIcon, "/monitors/status-pages"),
+]);
+
 export const createMonitorsNavigation = (
 	monitors: Array<{
 		id: string;
@@ -293,6 +298,7 @@ export const createMonitorsNavigation = (
 		"Add Your First Monitor",
 		(monitor) => ({ domain: monitor.domain })
 	),
+	statusPagesSection,
 ];
 
 export const createLoadingMonitorsNavigation = (): NavigationSection[] => [
@@ -304,6 +310,7 @@ export const createLoadingMonitorsNavigation = (): NavigationSection[] => [
 		"Loading monitors...",
 		HeartbeatIcon
 	),
+	statusPagesSection,
 ];
 
 export const websiteNavigation: NavigationSection[] = [

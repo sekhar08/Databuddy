@@ -1,32 +1,21 @@
 import type { Metadata } from "next";
-import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { getStatusPageUrl } from "@/lib/app-url";
 import { publicRPCClient } from "@/lib/orpc-public";
-import { IncidentTimeline } from "./_components/incident-timeline";
 import { LastUpdated } from "./_components/last-updated";
-import { MonitorRow } from "./_components/monitor-row";
-import { StatusBanner } from "./_components/status-banner";
+import { Status } from "./_components/status-page";
 import { TimeRangeSelector } from "./_components/time-range-selector";
 
 export const revalidate = 60;
-
-type StatusPageData = Awaited<
-	ReturnType<typeof publicRPCClient.statusPage.getBySlug>
->;
 
 interface StatusPageProps {
 	params: Promise<{ slug: string }>;
 	searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-const getStatusData = unstable_cache(
-	async (slug: string, days: number): Promise<StatusPageData | null> =>
-		publicRPCClient.statusPage.getBySlug({ slug, days }).catch(() => null),
-	["status-page"],
-	{ revalidate: 60, tags: ["status-page"] }
-);
+const getStatusData = (slug: string, days: number) =>
+	publicRPCClient.statusPage.getBySlug({ slug, days }).catch(() => null);
 
 function slugify(text: string): string {
 	return text
@@ -56,8 +45,10 @@ export async function generateMetadata({
 		};
 	}
 
-	const title = `${data.organization.name} Status`;
-	const description = `Real-time system status for ${data.organization.name}`;
+	const title = `${data.statusPage.name || data.organization.name} Status`;
+	const description =
+		data.statusPage.description ||
+		`Real-time system status for ${data.organization.name}`;
 	const url = getStatusPageUrl(slug);
 
 	return {
@@ -110,8 +101,10 @@ export default async function StatusPage({
 	const jsonLd = {
 		"@context": "https://schema.org",
 		"@type": "WebPage",
-		name: `${data.organization.name} Status`,
-		description: `Real-time system status for ${data.organization.name}`,
+		name: `${data.statusPage.name || data.organization.name} Status`,
+		description:
+			data.statusPage.description ||
+			`Real-time system status for ${data.organization.name}`,
 		url: getStatusPageUrl(slug),
 		publisher: {
 			"@type": "Organization",
@@ -126,48 +119,40 @@ export default async function StatusPage({
 				dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
 				type="application/ld+json"
 			/>
-			<div className="space-y-6">
-				<div className="flex items-center gap-3.5">
-					<div>
-						<h1 className="text-balance font-semibold text-2xl tracking-tight">
-							{data.organization.name}
-						</h1>
-						<p className="mt-0.5 text-pretty text-muted-foreground text-sm">
-							System status and uptime
-						</p>
-					</div>
-				</div>
+			<Status>
+				<Status.Header
+					description={data.statusPage.description ?? undefined}
+					name={data.statusPage.name}
+				/>
+				<Status.Banner status={data.overallStatus} />
 
-				<StatusBanner overallStatus={data.overallStatus} />
-
-				<div className="flex items-center justify-between">
-					<h2 className="font-semibold text-sm">Monitors</h2>
-					<Suspense>
-						<TimeRangeSelector currentDays={days} />
-					</Suspense>
-				</div>
-
-				<div className="space-y-3">
+				<Status.Section
+					action={
+						<Suspense>
+							<TimeRangeSelector currentDays={days} />
+						</Suspense>
+					}
+					title="Monitors"
+				>
 					{data.monitors.map((monitor) => (
-						<MonitorRow
+						<Status.MonitorCard
 							anchorId={slugify(monitor.name)}
 							currentStatus={monitor.currentStatus}
 							dailyData={monitor.dailyData}
 							days={days}
-							domain={monitor.domain}
+							domain={monitor.domain ?? undefined}
 							id={monitor.id}
 							key={monitor.id}
 							lastCheckedAt={monitor.lastCheckedAt}
 							name={monitor.name}
-							uptimePercentage={monitor.uptimePercentage}
+							uptimePercentage={monitor.uptimePercentage ?? undefined}
 						/>
 					))}
-				</div>
+				</Status.Section>
 
-				<IncidentTimeline />
-
+				<Status.Incidents />
 				<LastUpdated timestamp={latestTimestamp} />
-			</div>
+			</Status>
 		</>
 	);
 }

@@ -13,6 +13,7 @@ import { log, parseError } from "evlog";
 import { useLogger } from "evlog/elysia";
 import type { AgentConfig, AgentType } from "../ai/agents";
 import { createAgentConfig } from "../ai/agents";
+import { enrichAgentContext } from "../ai/config/enrich-context";
 import { AI_MODEL_MAX_RETRIES } from "../ai/config/retry";
 import { trackAgentEvent } from "../lib/databuddy";
 import {
@@ -99,7 +100,19 @@ const AgentRequestSchema = t.Object({
 });
 
 /**
+ * Estimated token count for a message (rough heuristic: 1 token ~4 chars).
+ */
+function estimateTokens(messages: unknown[]): number {
+	return Math.ceil(JSON.stringify(messages).length / 4);
+}
+
+/** Threshold at which we start pruning old messages (~100K tokens). */
+const CONTEXT_PRUNE_THRESHOLD = 100_000;
+
+/**
  * Create a ToolLoopAgent from AgentConfig.
+ * Includes a prepareStep hook that prunes old tool results and reasoning
+ * from the conversation when the estimated context size exceeds the threshold.
  */
 function createToolLoopAgent(
 	config: AgentConfig,
@@ -114,6 +127,20 @@ function createToolLoopAgent(
 		maxRetries: AI_MODEL_MAX_RETRIES,
 		experimental_context: config.experimental_context,
 		experimental_telemetry: experimentalTelemetry,
+		prepareStep: ({ messages }) => {
+			if (estimateTokens(messages) < CONTEXT_PRUNE_THRESHOLD) {
+				return { messages };
+			}
+			// Prune: keep first 2 messages + last 10, drop tool-result
+			// content from middle messages to free context space.
+			const pruned = pruneMessages({
+				messages,
+				reasoning: "before-last-message",
+				toolCalls: "before-last-2-messages",
+				emptyMessages: "remove",
+			});
+			return { messages: pruned };
+		},
 	});
 }
 
@@ -214,7 +241,7 @@ export const agent = new Elysia({ prefix: "/v1/agent" })
 
 					const lastMessage = getLastMessagePreview(body.messages);
 
-					const [config, memoryCtx] = await Promise.all([
+					const [config, memoryCtx, enrichment] = await Promise.all([
 						Promise.resolve(
 							createAgentConfig(agentType, {
 								userId,
@@ -228,11 +255,21 @@ export const agent = new Elysia({ prefix: "/v1/agent" })
 						isMemoryEnabled() && lastMessage
 							? getMemoryContext(lastMessage, userId, null)
 							: Promise.resolve(null),
+						enrichAgentContext({
+							userId,
+							websiteId: body.websiteId,
+							organizationId,
+						}),
 					]);
 
-					const memoryBlock = memoryCtx ? formatMemoryForPrompt(memoryCtx) : "";
-					if (memoryBlock) {
-						config.system = `${config.system}\n\n${memoryBlock}`;
+					const extras = [
+						memoryCtx ? formatMemoryForPrompt(memoryCtx) : "",
+						enrichment,
+					]
+						.filter(Boolean)
+						.join("\n\n");
+					if (extras) {
+						config.system.content = `${config.system.content}\n\n${extras}`;
 					}
 
 					const validation = await safeValidateUIMessages({

@@ -10,8 +10,8 @@ import {
 	WarningIcon,
 } from "@phosphor-icons/react";
 import type { ElementType } from "react";
-import { List } from "@/components/ui/composables/list";
 import { Badge } from "@/components/ui/badge";
+import { List } from "@/components/ui/composables/list";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 

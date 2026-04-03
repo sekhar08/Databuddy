@@ -1,6 +1,7 @@
 import { type LanguageModel, stepCountIs } from "ai";
 import type { AppContext } from "../config/context";
 import { models } from "../config/models";
+import { cachedSystemPrompt } from "../config/prompt-cache";
 import { buildReflectionInstructions } from "../prompts/reflection";
 import { createAnnotationTools } from "../tools/annotations";
 import { executeQueryBuilderTool } from "../tools/execute-query-builder";
@@ -45,7 +46,7 @@ export function createConfig(context: AgentContext): AgentConfig {
 
 	return {
 		model: models.analytics as LanguageModel,
-		system: buildReflectionInstructions(appContext),
+		system: cachedSystemPrompt(buildReflectionInstructions(appContext)),
 		tools: createTools(),
 		stopWhen: stepCountIs(20),
 		temperature: 0,
@@ -69,7 +70,7 @@ export function createMaxConfig(context: AgentContext): AgentConfig {
 
 	return {
 		model: models.advanced as LanguageModel,
-		system: buildReflectionInstructions(appContext),
+		system: cachedSystemPrompt(buildReflectionInstructions(appContext)),
 		tools: createTools(),
 		stopWhen: stepCountIs(40),
 		temperature: 0,

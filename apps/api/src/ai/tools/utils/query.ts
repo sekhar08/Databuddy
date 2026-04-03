@@ -19,6 +19,9 @@ const USER_CONTENT_FIELDS = new Set([
 	"utm_campaign",
 	"utm_term",
 	"utm_content",
+	"event_name",
+	"property_key",
+	"property_value",
 ]);
 
 const MAX_STRING_LENGTH = 2000;

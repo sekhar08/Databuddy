@@ -1,11 +1,7 @@
-import type { ManifestoChapter } from "./manifesto-data";
 import { ManifestoBlocks } from "./manifesto-blocks";
+import type { ManifestoChapter } from "./manifesto-data";
 
-export function ManifestoChapter({
-	chapter,
-}: {
-	chapter: ManifestoChapter;
-}) {
+export function ManifestoChapter({ chapter }: { chapter: ManifestoChapter }) {
 	return (
 		<section
 			aria-labelledby={`${chapter.id}-heading`}

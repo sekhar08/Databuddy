@@ -1,8 +1,5 @@
 import { ArrowDownIcon, ArrowUpIcon } from "@phosphor-icons/react";
-import {
-	computeMetricChange,
-	formatMetric,
-} from "@/lib/format-insight-metric";
+import { computeMetricChange, formatMetric } from "@/lib/format-insight-metric";
 import type { InsightMetric } from "@/lib/insight-types";
 import { cn } from "@/lib/utils";
 

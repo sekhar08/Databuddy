@@ -1,4 +1,5 @@
 import { hasComponent } from "./registry";
+import { validateComponentJSON } from "./schemas";
 import type {
 	ContentSegment,
 	ParsedContent,
@@ -9,14 +10,19 @@ import type {
 const COMPONENT_START = '{"type":"';
 
 /**
- * Type guard to validate raw component input structure
+ * Type guard to validate raw component input structure.
+ * Uses Zod schemas to validate data shape beyond just checking the type exists.
  */
 function isRawComponentInput(obj: unknown): obj is RawComponentInput {
 	if (typeof obj !== "object" || obj === null) {
 		return false;
 	}
 	const record = obj as Record<string, unknown>;
-	return typeof record.type === "string" && hasComponent(record.type);
+	if (typeof record.type !== "string" || !hasComponent(record.type)) {
+		return false;
+	}
+	const { valid } = validateComponentJSON(obj);
+	return valid;
 }
 
 /**

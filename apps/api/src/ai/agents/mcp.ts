@@ -1,5 +1,6 @@
 import { type LanguageModel, stepCountIs } from "ai";
 import type { models } from "../config/models";
+import { cachedSystemPrompt } from "../config/prompt-cache";
 import { createMcpAgentTools } from "../mcp/agent-tools";
 import { buildAnalyticsInstructionsForMcp } from "../prompts/analytics";
 import { maxSteps } from "./analytics";
@@ -34,10 +35,10 @@ export function createMcpAgentConfig(
 
 	return {
 		model: model as LanguageModel,
-		system,
+		system: cachedSystemPrompt(system),
 		tools,
 		stopWhen: stepCountIs(maxSteps),
-		temperature: 0.3,
+		temperature: 0.1,
 		experimental_context,
 	};
 }

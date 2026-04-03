@@ -34,7 +34,7 @@ export const revenueRouter = {
 					})
 				: await withWorkspace(context, {
 						resource: "website",
-						permissions: ["configure"],
+						permissions: ["update"],
 					});
 
 			const ownerId = workspace.organizationId;
@@ -90,7 +90,7 @@ export const revenueRouter = {
 				...(input.websiteId
 					? { websiteId: input.websiteId }
 					: { resource: "website" as const }),
-				permissions: ["configure"],
+				permissions: ["update"],
 			});
 
 			const ownerId = workspace.organizationId;
@@ -169,7 +169,7 @@ export const revenueRouter = {
 				...(input.websiteId
 					? { websiteId: input.websiteId }
 					: { resource: "website" as const }),
-				permissions: ["configure"],
+				permissions: ["update"],
 			});
 
 			const ownerId = workspace.organizationId;
@@ -215,7 +215,7 @@ export const revenueRouter = {
 				...(input.websiteId
 					? { websiteId: input.websiteId }
 					: { resource: "website" as const }),
-				permissions: ["configure"],
+				permissions: ["update"],
 			});
 
 			const ownerId = workspace.organizationId;

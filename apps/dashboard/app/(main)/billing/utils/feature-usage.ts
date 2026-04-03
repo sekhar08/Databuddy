@@ -83,25 +83,22 @@ export function calculateFeatureUsage(
 	const hasExtraCredits = !unlimited && remaining > limit;
 
 	const overageAmount = remaining < 0 ? Math.abs(remaining) : 0;
-	const hasPricedOverage =
-		pricingTiers?.length
-			? pricingTiers.length > 0
-			: (bal.breakdown?.some((b) => b.price?.tiers?.length) ?? false);
+	const hasPricedOverage = pricingTiers?.length
+		? pricingTiers.length > 0
+		: (bal.breakdown?.some((b) => b.price?.tiers?.length) ?? false);
 	const effectiveTiers =
 		pricingTiers ??
-		(bal.breakdown
-			?.at(0)
-			?.price?.tiers?.map((t) => ({
-				to: (t.to ?? "inf") as number | "inf",
-				amount: t.amount ?? 0,
-			})) ??
-			[]);
+		bal.breakdown?.at(0)?.price?.tiers?.map((t) => ({
+			to: (t.to ?? "inf") as number | "inf",
+			amount: t.amount ?? 0,
+		})) ??
+		[];
 	const overage =
 		overageAmount > 0
 			? {
-				amount: overageAmount,
-				cost: calculateOverageCost(overageAmount, effectiveTiers),
-			}
+					amount: overageAmount,
+					cost: calculateOverageCost(overageAmount, effectiveTiers),
+				}
 			: null;
 
 	const effectiveLimit = unlimited
@@ -110,8 +107,7 @@ export function calculateFeatureUsage(
 			? remaining
 			: limit;
 
-	const interval =
-		bal.breakdown?.at(0)?.reset?.interval ?? null;
+	const interval = bal.breakdown?.at(0)?.reset?.interval ?? null;
 
 	return {
 		id: bal.featureId,

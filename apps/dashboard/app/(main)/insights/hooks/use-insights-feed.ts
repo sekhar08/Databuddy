@@ -122,8 +122,8 @@ export function useInsightsFeed() {
 		isOrgContextLoading ||
 		Boolean(
 			orgId &&
-			!(historyInfinite.isFetched && aiQuery.isFetched) &&
-			!(historyInfinite.isError && aiQuery.isError)
+				!(historyInfinite.isFetched && aiQuery.isFetched) &&
+				!(historyInfinite.isError && aiQuery.isError)
 		);
 
 	const isError =

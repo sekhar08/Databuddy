@@ -5,21 +5,26 @@ import {
 	eq,
 	inArray,
 	organization,
+	statusPageMonitors,
+	statusPages,
 	uptimeSchedules,
 	websites,
 } from "@databuddy/db";
-import { cacheable } from "@databuddy/redis";
+import { cacheable, invalidateCacheableWithArgs } from "@databuddy/redis";
+import { randomUUIDv7 } from "bun";
 import { z } from "zod";
 import { rpcError } from "../errors";
-import { logger } from "../lib/logger";
 import { protectedProcedure, publicProcedure } from "../orpc";
+import { withFeatureAccess } from "../procedures/with-feature-access";
 import { withWorkspace } from "../procedures/with-workspace";
+
+const monitorsProcedure = protectedProcedure.use(withFeatureAccess("monitors"));
 
 const UPTIME_TABLE = "uptime.uptime_monitor";
 
 const dailyUptimeSchema = z.object({
 	date: z.string(),
-	uptime_percentage: z.number(),
+	uptime_percentage: z.number().optional(),
 	avg_response_time: z.number().optional(),
 	p95_response_time: z.number().optional(),
 });
@@ -27,9 +32,9 @@ const dailyUptimeSchema = z.object({
 const monitorSchema = z.object({
 	id: z.string(),
 	name: z.string(),
-	domain: z.string(),
+	domain: z.string().optional(),
 	currentStatus: z.enum(["up", "down", "unknown"]),
-	uptimePercentage: z.number(),
+	uptimePercentage: z.number().optional(),
 	dailyData: z.array(dailyUptimeSchema),
 	lastCheckedAt: z.string().nullable(),
 });
@@ -39,6 +44,10 @@ const statusPageOutputSchema = z.object({
 		name: z.string(),
 		slug: z.string(),
 		logo: z.string().nullable(),
+	}),
+	statusPage: z.object({
+		name: z.string(),
+		description: z.string().nullable(),
 	}),
 	overallStatus: z.enum(["operational", "degraded", "outage"]),
 	monitors: z.array(monitorSchema),
@@ -92,21 +101,31 @@ async function _fetchStatusPageData(
 			orgName: organization.name,
 			orgSlug: organization.slug,
 			orgLogo: organization.logo,
+			statusPageName: statusPages.name,
+			statusPageDescription: statusPages.description,
 			scheduleId: uptimeSchedules.id,
 			websiteId: uptimeSchedules.websiteId,
 			scheduleName: uptimeSchedules.name,
 			scheduleUrl: uptimeSchedules.url,
+			monitorDisplayName: statusPageMonitors.displayName,
+			hideUrl: statusPageMonitors.hideUrl,
+			hideUptimePercentage: statusPageMonitors.hideUptimePercentage,
+			hideLatency: statusPageMonitors.hideLatency,
 		})
-		.from(organization)
-		.innerJoin(
+		.from(statusPages)
+		.innerJoin(organization, eq(statusPages.organizationId, organization.id))
+		.leftJoin(
+			statusPageMonitors,
+			eq(statusPageMonitors.statusPageId, statusPages.id)
+		)
+		.leftJoin(
 			uptimeSchedules,
 			and(
-				eq(uptimeSchedules.organizationId, organization.id),
-				eq(uptimeSchedules.isPublic, true),
+				eq(statusPageMonitors.uptimeScheduleId, uptimeSchedules.id),
 				eq(uptimeSchedules.isPaused, false)
 			)
 		)
-		.where(eq(organization.slug, slug));
+		.where(eq(statusPages.slug, slug));
 
 	if (rows.length === 0) {
 		return null;
@@ -118,12 +137,23 @@ async function _fetchStatusPageData(
 		logo: rows[0].orgLogo,
 	};
 
-	const schedules = rows.map((r) => ({
-		id: r.scheduleId,
-		websiteId: r.websiteId,
-		name: r.scheduleName,
-		url: r.scheduleUrl,
-	}));
+	const statusPageInfo = {
+		name: rows[0].statusPageName,
+		description: rows[0].statusPageDescription,
+	};
+
+	const schedules = rows
+		.filter((r) => r.scheduleId)
+		.map((r) => ({
+			id: r.scheduleId as string,
+			websiteId: r.websiteId,
+			displayName: r.monitorDisplayName,
+			name: r.scheduleName,
+			url: r.scheduleUrl as string,
+			hideUrl: r.hideUrl,
+			hideUptimePercentage: r.hideUptimePercentage,
+			hideLatency: r.hideLatency,
+		}));
 
 	const today = new Date();
 	const ninetyDaysAgo = new Date(today);
@@ -149,34 +179,38 @@ async function _fetchStatusPageData(
 					.from(websites)
 					.where(inArray(websites.id, websiteIds))
 			: Promise.resolve([]),
-		chQuery<DailyRow>(
-			`SELECT
-					site_id,
-					toDate(timestamp) as date,
-					if((countIf(status = 1) + countIf(status = 0)) = 0, 0, round((countIf(status = 1) / (countIf(status = 1) + countIf(status = 0))) * 100, 2)) as uptime_percentage,
-					round(avg(total_ms), 2) as avg_response_time,
-					round(quantile(0.95)(total_ms), 2) as p95_response_time
-				FROM ${UPTIME_TABLE}
-				WHERE
-					site_id IN ({siteIds:Array(String)})
-					AND timestamp >= toDateTime({startDate:String})
-					AND timestamp <= toDateTime(concat({endDate:String}, ' 23:59:59'))
-				GROUP BY site_id, date
-				ORDER BY site_id, date ASC`,
-			{ siteIds, startDate, endDate }
-		),
-		chQuery<LatestCheckRow>(
-			`SELECT
-					site_id,
-					max(timestamp) as last_timestamp,
-					argMax(status, timestamp) as last_status,
-					argMax(http_code, timestamp) as last_http_code
-				FROM ${UPTIME_TABLE}
-				WHERE site_id IN ({siteIds:Array(String)})
-					AND timestamp >= now() - INTERVAL 7 DAY
-				GROUP BY site_id`,
-			{ siteIds }
-		),
+		siteIds.length > 0
+			? chQuery<DailyRow>(
+					`SELECT
+						site_id,
+						toDate(timestamp) as date,
+						if((countIf(status = 1) + countIf(status = 0)) = 0, 0, round((countIf(status = 1) / (countIf(status = 1) + countIf(status = 0))) * 100, 2)) as uptime_percentage,
+						round(avg(total_ms), 2) as avg_response_time,
+						round(quantile(0.95)(total_ms), 2) as p95_response_time
+					FROM ${UPTIME_TABLE}
+					WHERE
+						site_id IN ({siteIds:Array(String)})
+						AND timestamp >= toDateTime({startDate:String})
+						AND timestamp <= toDateTime(concat({endDate:String}, ' 23:59:59'))
+					GROUP BY site_id, date
+					ORDER BY site_id, date ASC`,
+					{ siteIds, startDate, endDate }
+				)
+			: Promise.resolve([]),
+		siteIds.length > 0
+			? chQuery<LatestCheckRow>(
+					`SELECT
+						site_id,
+						max(timestamp) as last_timestamp,
+						argMax(status, timestamp) as last_status,
+						argMax(http_code, timestamp) as last_http_code
+					FROM ${UPTIME_TABLE}
+					WHERE site_id IN ({siteIds:Array(String)})
+						AND timestamp >= now() - INTERVAL 7 DAY
+					GROUP BY site_id`,
+					{ siteIds }
+				)
+			: Promise.resolve([]),
 	]);
 
 	const websiteMap = new Map(websiteRows.map((w) => [w.id, w]));
@@ -214,7 +248,7 @@ async function _fetchStatusPageData(
 					: "unknown"
 			: "unknown";
 
-		const uptimePercentage =
+		const uptimePercentageRaw =
 			dailyData.length > 0
 				? dailyData.reduce((sum, d) => sum + d.uptime_percentage, 0) /
 					dailyData.length
@@ -222,15 +256,28 @@ async function _fetchStatusPageData(
 
 		return {
 			id: schedule.id,
-			name: schedule.name ?? website?.name ?? website?.domain ?? schedule.url,
-			domain: website?.domain ?? schedule.url,
+			name:
+				schedule.displayName ??
+				schedule.name ??
+				website?.name ??
+				website?.domain ??
+				schedule.url,
+			domain: schedule.hideUrl ? undefined : (website?.domain ?? schedule.url),
 			currentStatus,
-			uptimePercentage: Math.round(uptimePercentage * 100) / 100,
+			uptimePercentage: schedule.hideUptimePercentage
+				? undefined
+				: Math.round(uptimePercentageRaw * 100) / 100,
 			dailyData: dailyData.map((d) => ({
 				date: String(d.date),
-				uptime_percentage: d.uptime_percentage,
-				avg_response_time: d.avg_response_time,
-				p95_response_time: d.p95_response_time,
+				uptime_percentage: schedule.hideUptimePercentage
+					? undefined
+					: d.uptime_percentage,
+				avg_response_time: schedule.hideLatency
+					? undefined
+					: d.avg_response_time,
+				p95_response_time: schedule.hideLatency
+					? undefined
+					: d.p95_response_time,
 			})),
 			lastCheckedAt: latestCheck?.last_timestamp ?? null,
 		};
@@ -238,6 +285,7 @@ async function _fetchStatusPageData(
 
 	return {
 		organization: org,
+		statusPage: statusPageInfo,
 		overallStatus: deriveOverallStatus(monitors),
 		monitors,
 	};
@@ -275,45 +323,381 @@ export const statusPageRouter = {
 			return data;
 		}),
 
-	togglePublicMonitor: protectedProcedure
+	list: monitorsProcedure
 		.route({
 			method: "POST",
-			path: "/statusPage/togglePublicMonitor",
-			summary: "Toggle monitor public visibility",
+			path: "/statusPage/list",
+			summary: "List status pages for organization",
 			tags: ["StatusPage"],
 		})
 		.input(
 			z.object({
-				scheduleId: z.string(),
-				isPublic: z.boolean(),
+				organizationId: z.string(),
 			})
 		)
-		.output(z.object({ success: z.literal(true), isPublic: z.boolean() }))
 		.handler(async ({ context, input }) => {
-			const schedule = await db.query.uptimeSchedules.findFirst({
-				where: eq(uptimeSchedules.id, input.scheduleId),
+			await withWorkspace(context, {
+				organizationId: input.organizationId,
+				resource: "website",
+				permissions: ["read"],
 			});
 
-			if (!schedule) {
-				throw rpcError.notFound("Schedule", input.scheduleId);
+			const pages = await db.query.statusPages.findMany({
+				where: eq(statusPages.organizationId, input.organizationId),
+				orderBy: (statusPages, { desc }) => [desc(statusPages.createdAt)],
+				with: {
+					statusPageMonitors: {
+						columns: { id: true },
+					},
+				},
+			});
+
+			return pages.map((page) => ({
+				...page,
+				monitorCount: page.statusPageMonitors.length,
+				statusPageMonitors: undefined,
+			}));
+		}),
+
+	get: monitorsProcedure
+		.route({
+			method: "POST",
+			path: "/statusPage/get",
+			summary: "Get status page details including monitors",
+			tags: ["StatusPage"],
+		})
+		.input(
+			z.object({
+				statusPageId: z.string(),
+			})
+		)
+		.handler(async ({ context, input }) => {
+			const statusPage = await db.query.statusPages.findFirst({
+				where: eq(statusPages.id, input.statusPageId),
+			});
+
+			if (!statusPage) {
+				throw rpcError.notFound("StatusPage", input.statusPageId);
 			}
 
 			await withWorkspace(context, {
-				organizationId: schedule.organizationId,
+				organizationId: statusPage.organizationId,
+				resource: "website",
+				permissions: ["read"],
+			});
+
+			const monitors = await db.query.statusPageMonitors.findMany({
+				where: eq(statusPageMonitors.statusPageId, input.statusPageId),
+				with: {
+					uptimeSchedule: true,
+				},
+				orderBy: (monitors, { asc }) => [asc(monitors.order)],
+			});
+
+			return {
+				...statusPage,
+				monitors,
+			};
+		}),
+
+	create: monitorsProcedure
+		.route({
+			method: "POST",
+			path: "/statusPage/create",
+			summary: "Create status page",
+			tags: ["StatusPage"],
+		})
+		.input(
+			z.object({
+				organizationId: z.string(),
+				name: z.string(),
+				slug: z.string(),
+				description: z.string().optional(),
+			})
+		)
+		.handler(async ({ context, input }) => {
+			await withWorkspace(context, {
+				organizationId: input.organizationId,
+				resource: "website",
+				permissions: ["update"],
+			});
+
+			const existing = await db.query.statusPages.findFirst({
+				where: eq(statusPages.slug, input.slug),
+			});
+
+			if (existing) {
+				throw rpcError.badRequest("Slug is already taken");
+			}
+
+			const id = randomUUIDv7();
+
+			await db.insert(statusPages).values({
+				id,
+				organizationId: input.organizationId,
+				name: input.name,
+				slug: input.slug,
+				description: input.description,
+			});
+
+			return db.query.statusPages.findFirst({
+				where: eq(statusPages.id, id),
+			});
+		}),
+
+	update: monitorsProcedure
+		.route({
+			method: "POST",
+			path: "/statusPage/update",
+			summary: "Update status page details",
+			tags: ["StatusPage"],
+		})
+		.input(
+			z.object({
+				statusPageId: z.string(),
+				name: z.string().optional(),
+				slug: z.string().optional(),
+				description: z.string().optional(),
+			})
+		)
+		.handler(async ({ context, input }) => {
+			const statusPage = await db.query.statusPages.findFirst({
+				where: eq(statusPages.id, input.statusPageId),
+			});
+
+			if (!statusPage) {
+				throw rpcError.notFound("StatusPage", input.statusPageId);
+			}
+
+			await withWorkspace(context, {
+				organizationId: statusPage.organizationId,
+				resource: "website",
+				permissions: ["update"],
+			});
+
+			if (input.slug && input.slug !== statusPage.slug) {
+				const existing = await db.query.statusPages.findFirst({
+					where: eq(statusPages.slug, input.slug),
+				});
+
+				if (existing) {
+					throw rpcError.badRequest("Slug is already taken");
+				}
+			}
+
+			await db
+				.update(statusPages)
+				.set({
+					...(input.name && { name: input.name }),
+					...(input.slug && { slug: input.slug }),
+					...(input.description !== undefined && {
+						description: input.description,
+					}),
+					updatedAt: new Date(),
+				})
+				.where(eq(statusPages.id, input.statusPageId));
+
+			await invalidateCacheableWithArgs("status-page", [statusPage.slug]);
+			if (input.slug && input.slug !== statusPage.slug) {
+				await invalidateCacheableWithArgs("status-page", [input.slug]);
+			}
+
+			return db.query.statusPages.findFirst({
+				where: eq(statusPages.id, input.statusPageId),
+			});
+		}),
+
+	delete: monitorsProcedure
+		.route({
+			method: "POST",
+			path: "/statusPage/delete",
+			summary: "Delete status page",
+			tags: ["StatusPage"],
+		})
+		.input(
+			z.object({
+				statusPageId: z.string(),
+			})
+		)
+		.handler(async ({ context, input }) => {
+			const statusPage = await db.query.statusPages.findFirst({
+				where: eq(statusPages.id, input.statusPageId),
+			});
+
+			if (!statusPage) {
+				throw rpcError.notFound("StatusPage", input.statusPageId);
+			}
+
+			await withWorkspace(context, {
+				organizationId: statusPage.organizationId,
 				resource: "website",
 				permissions: ["update"],
 			});
 
 			await db
-				.update(uptimeSchedules)
-				.set({ isPublic: input.isPublic, updatedAt: new Date() })
-				.where(eq(uptimeSchedules.id, input.scheduleId));
+				.delete(statusPages)
+				.where(eq(statusPages.id, input.statusPageId));
 
-			logger.info(
-				{ scheduleId: input.scheduleId, isPublic: input.isPublic },
-				"Monitor public visibility toggled"
-			);
+			await invalidateCacheableWithArgs("status-page", [statusPage.slug]);
 
-			return { success: true, isPublic: input.isPublic };
+			return { success: true };
+		}),
+
+	addMonitor: monitorsProcedure
+		.route({
+			method: "POST",
+			path: "/statusPage/addMonitor",
+			summary: "Add a monitor to a status page",
+			tags: ["StatusPage"],
+		})
+		.input(
+			z.object({
+				statusPageId: z.string(),
+				uptimeScheduleId: z.string(),
+			})
+		)
+		.handler(async ({ context, input }) => {
+			const statusPage = await db.query.statusPages.findFirst({
+				where: eq(statusPages.id, input.statusPageId),
+			});
+
+			if (!statusPage) {
+				throw rpcError.notFound("StatusPage", input.statusPageId);
+			}
+
+			await withWorkspace(context, {
+				organizationId: statusPage.organizationId,
+				resource: "website",
+				permissions: ["update"],
+			});
+
+			const existing = await db.query.statusPageMonitors.findFirst({
+				where: and(
+					eq(statusPageMonitors.statusPageId, input.statusPageId),
+					eq(statusPageMonitors.uptimeScheduleId, input.uptimeScheduleId)
+				),
+			});
+
+			if (existing) {
+				throw rpcError.badRequest("Monitor is already on this status page");
+			}
+
+			const id = randomUUIDv7();
+
+			await db.insert(statusPageMonitors).values({
+				id,
+				statusPageId: input.statusPageId,
+				uptimeScheduleId: input.uptimeScheduleId,
+			});
+
+			await invalidateCacheableWithArgs("status-page", [statusPage.slug]);
+
+			return db.query.statusPageMonitors.findFirst({
+				where: eq(statusPageMonitors.id, id),
+			});
+		}),
+
+	removeMonitor: monitorsProcedure
+		.route({
+			method: "POST",
+			path: "/statusPage/removeMonitor",
+			summary: "Remove a monitor from a status page",
+			tags: ["StatusPage"],
+		})
+		.input(
+			z.object({
+				statusPageId: z.string(),
+				uptimeScheduleId: z.string(),
+			})
+		)
+		.handler(async ({ context, input }) => {
+			const statusPage = await db.query.statusPages.findFirst({
+				where: eq(statusPages.id, input.statusPageId),
+			});
+
+			if (!statusPage) {
+				throw rpcError.notFound("StatusPage", input.statusPageId);
+			}
+
+			await withWorkspace(context, {
+				organizationId: statusPage.organizationId,
+				resource: "website",
+				permissions: ["update"],
+			});
+
+			await db
+				.delete(statusPageMonitors)
+				.where(
+					and(
+						eq(statusPageMonitors.statusPageId, input.statusPageId),
+						eq(statusPageMonitors.uptimeScheduleId, input.uptimeScheduleId)
+					)
+				);
+
+			await invalidateCacheableWithArgs("status-page", [statusPage.slug]);
+
+			return { success: true };
+		}),
+
+	updateMonitorSettings: monitorsProcedure
+		.route({
+			method: "POST",
+			path: "/statusPage/updateMonitorSettings",
+			summary: "Update visibility settings for a status page monitor",
+			tags: ["StatusPage"],
+		})
+		.input(
+			z.object({
+				monitorId: z.string(),
+				displayName: z.string().nullable().optional(),
+				hideUrl: z.boolean().optional(),
+				hideUptimePercentage: z.boolean().optional(),
+				hideLatency: z.boolean().optional(),
+				order: z.number().optional(),
+			})
+		)
+		.handler(async ({ context, input }) => {
+			const monitor = await db.query.statusPageMonitors.findFirst({
+				where: eq(statusPageMonitors.id, input.monitorId),
+				with: {
+					statusPage: true,
+				},
+			});
+
+			if (!monitor) {
+				throw rpcError.notFound("StatusPageMonitor", input.monitorId);
+			}
+
+			await withWorkspace(context, {
+				organizationId: monitor.statusPage.organizationId,
+				resource: "website",
+				permissions: ["update"],
+			});
+
+			await db
+				.update(statusPageMonitors)
+				.set({
+					...(input.displayName !== undefined && {
+						displayName: input.displayName,
+					}),
+					...(input.hideUrl !== undefined && { hideUrl: input.hideUrl }),
+					...(input.hideUptimePercentage !== undefined && {
+						hideUptimePercentage: input.hideUptimePercentage,
+					}),
+					...(input.hideLatency !== undefined && {
+						hideLatency: input.hideLatency,
+					}),
+					...(input.order !== undefined && { order: input.order }),
+					updatedAt: new Date(),
+				})
+				.where(eq(statusPageMonitors.id, input.monitorId));
+
+			await invalidateCacheableWithArgs("status-page", [
+				monitor.statusPage.slug,
+			]);
+
+			return db.query.statusPageMonitors.findFirst({
+				where: eq(statusPageMonitors.id, input.monitorId),
+			});
 		}),
 };

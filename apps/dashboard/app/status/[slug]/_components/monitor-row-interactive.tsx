@@ -20,7 +20,7 @@ const LatencyChart = dynamic(
 
 interface DailyData {
 	date: string;
-	uptime_percentage: number;
+	uptime_percentage?: number;
 	avg_response_time?: number;
 	p95_response_time?: number;
 }
@@ -30,6 +30,7 @@ interface MonitorRowInteractiveProps {
 	dailyData: DailyData[];
 	days: number;
 	hasLatencyData: boolean;
+	hasUptimeData?: boolean;
 }
 
 interface MonthMarker {
@@ -63,6 +64,7 @@ export function MonitorRowInteractive({
 	dailyData,
 	days,
 	hasLatencyData,
+	hasUptimeData = true,
 }: MonitorRowInteractiveProps) {
 	const heatmapData = useMemo(
 		() => buildUptimeHeatmapDays(dailyData, days),
@@ -73,30 +75,32 @@ export function MonitorRowInteractive({
 
 	return (
 		<>
-			<div className="px-4 pb-4">
-				<UptimeHeatmapStrip
-					days={heatmapData}
-					emptyLabel="No data recorded"
-					getDateLabel={(d) => formatDateOnly(d)}
-					interactive
-					isActive
-					stripClassName="flex h-8 w-full gap-px sm:gap-[2px]"
-				/>
-				<div className="relative mt-1.5 h-3.5">
-					{monthMarkers.map((marker) => (
-						<span
-							className="absolute -translate-x-1/2 text-[10px] text-muted-foreground"
-							key={`${marker.label}-${marker.offset}`}
-							style={{ left: `${marker.offset}%` }}
-						>
-							{marker.label}
+			{hasUptimeData ? (
+				<div className="px-4 pb-4">
+					<UptimeHeatmapStrip
+						days={heatmapData}
+						emptyLabel="No data recorded"
+						getDateLabel={(d) => formatDateOnly(d)}
+						interactive
+						isActive
+						stripClassName="flex h-8 w-full gap-px sm:gap-[2px]"
+					/>
+					<div className="relative mt-1.5 h-3.5">
+						{monthMarkers.map((marker) => (
+							<span
+								className="absolute -translate-x-1/2 text-[10px] text-muted-foreground"
+								key={`${marker.label}-${marker.offset}`}
+								style={{ left: `${marker.offset}%` }}
+							>
+								{marker.label}
+							</span>
+						))}
+						<span className="absolute right-0 text-[10px] text-muted-foreground">
+							Today
 						</span>
-					))}
-					<span className="absolute right-0 text-[10px] text-muted-foreground">
-						Today
-					</span>
+					</div>
 				</div>
-			</div>
+			) : null}
 
 			{hasLatencyData ? (
 				<LatencyChart data={dailyData} storageKey={`status-latency-${id}`} />

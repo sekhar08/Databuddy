@@ -6,8 +6,6 @@ import {
 	analyticsInsights,
 	annotations,
 	apikey,
-	assistantConversations,
-	assistantMessages,
 	featureAccessLog,
 	featureInvite,
 	feedback,
@@ -24,6 +22,8 @@ import {
 	revenueConfig,
 	session,
 	ssoProvider,
+	statusPageMonitors,
+	statusPages,
 	targetGroups,
 	team,
 	twoFactor,
@@ -63,6 +63,7 @@ export const organizationRelations = relations(organization, ({ many }) => ({
 	teams: many(team),
 	alarms: many(alarms),
 	analyticsInsights: many(analyticsInsights),
+	statusPages: many(statusPages),
 }));
 
 export const accountRelations = relations(account, ({ one }) => ({
@@ -210,7 +211,7 @@ export const flagsToTargetGroupsRelations = relations(
 
 export const uptimeSchedulesRelations = relations(
 	uptimeSchedules,
-	({ one }) => ({
+	({ one, many }) => ({
 		website: one(websites, {
 			fields: [uptimeSchedules.websiteId],
 			references: [websites.id],
@@ -218,6 +219,29 @@ export const uptimeSchedulesRelations = relations(
 		organization: one(organization, {
 			fields: [uptimeSchedules.organizationId],
 			references: [organization.id],
+		}),
+		statusPageMonitors: many(statusPageMonitors),
+	})
+);
+
+export const statusPagesRelations = relations(statusPages, ({ one, many }) => ({
+	organization: one(organization, {
+		fields: [statusPages.organizationId],
+		references: [organization.id],
+	}),
+	statusPageMonitors: many(statusPageMonitors),
+}));
+
+export const statusPageMonitorsRelations = relations(
+	statusPageMonitors,
+	({ one }) => ({
+		statusPage: one(statusPages, {
+			fields: [statusPageMonitors.statusPageId],
+			references: [statusPages.id],
+		}),
+		uptimeSchedule: one(uptimeSchedules, {
+			fields: [statusPageMonitors.uptimeScheduleId],
+			references: [uptimeSchedules.id],
 		}),
 	})
 );
@@ -348,31 +372,6 @@ export const insightUserFeedbackRelations = relations(
 		organization: one(organization, {
 			fields: [insightUserFeedback.organizationId],
 			references: [organization.id],
-		}),
-	})
-);
-
-export const assistantConversationsRelations = relations(
-	assistantConversations,
-	({ one, many }) => ({
-		user: one(user, {
-			fields: [assistantConversations.userId],
-			references: [user.id],
-		}),
-		website: one(websites, {
-			fields: [assistantConversations.websiteId],
-			references: [websites.id],
-		}),
-		messages: many(assistantMessages),
-	})
-);
-
-export const assistantMessagesRelations = relations(
-	assistantMessages,
-	({ one }) => ({
-		conversation: one(assistantConversations, {
-			fields: [assistantMessages.conversationId],
-			references: [assistantConversations.id],
 		}),
 	})
 );

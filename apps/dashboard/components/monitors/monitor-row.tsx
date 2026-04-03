@@ -2,7 +2,6 @@
 
 import {
 	DotsThreeIcon,
-	GlobeIcon,
 	HeartbeatIcon,
 	PauseIcon,
 	PencilSimpleIcon,
@@ -14,9 +13,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { FaviconImage } from "@/components/analytics/favicon-image";
-import { List } from "@/components/ui/composables/list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { List } from "@/components/ui/composables/list";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -55,7 +54,6 @@ interface MonitorRowProps {
 		granularity: string;
 		cron: string;
 		isPaused: boolean;
-		isPublic: boolean;
 		createdAt: Date | string;
 		updatedAt: Date | string;
 		website: {
@@ -309,11 +307,7 @@ export function MonitorRow({
 	};
 
 	return (
-		<List.Row
-			align="start"
-			asChild
-			className={cn(!isActive && "opacity-50")}
-		>
+		<List.Row align="start" asChild className={cn(!isActive && "opacity-50")}>
 			<Link href={`/monitors/${schedule.id}`} onClick={handleClick}>
 				<List.Cell className="pt-0.5">
 					<div
@@ -353,15 +347,6 @@ export function MonitorRow({
 
 				<List.Cell className="hidden w-14 pt-0.5 text-muted-foreground text-xs tabular-nums md:block">
 					{GRANULARITY_LABELS[schedule.granularity] || schedule.granularity}
-				</List.Cell>
-
-				<List.Cell className="hidden w-16 pt-0.5 md:block">
-					{schedule.isPublic ? (
-						<Badge className="gap-1" variant="outline">
-							<GlobeIcon className="size-3" weight="duotone" />
-							Public
-						</Badge>
-					) : null}
 				</List.Cell>
 
 				<List.Cell className="hidden items-start gap-3 pt-0.5 lg:flex">

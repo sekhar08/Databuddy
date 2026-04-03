@@ -382,11 +382,7 @@ export default function SecurityPage() {
 				{hasChanges && (
 					<div className="border-t bg-background px-4 py-4 sm:px-6">
 						<div className="flex items-center justify-end gap-3">
-							<Button
-								onClick={initializeSettings}
-								size="sm"
-								variant="outline"
-							>
+							<Button onClick={initializeSettings} size="sm" variant="outline">
 								Cancel
 							</Button>
 							<Button
